@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Moura Leite Gamificação</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <!-- Brand Side -->
+        <div class="brand-side">
+            <div class="brand-overlay"></div>
+            <div class="brand-content">
+                <div class="logo-large">
+                    <span class="m-letter">M</span><span class="l-letter">L</span>
+                </div>
+                <h1>Moura Leite</h1>
+                <p>Botucatu - SP</p>
+                <div class="brand-quote">
+                    <blockquote>"Transformando espaços em lares há mais de 30 anos."</blockquote>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Side -->
+        <div class="form-side">
+            <div class="form-wrapper">
+                <div id="login-form-container">
+                    <div class="form-header">
+                        <h2>Bem-vindo de volta!</h2>
+                        <p>Entre na sua conta para continuar.</p>
+                    </div>
+                    <form class="auth-form" id="login-form">
+                        <div class="form-group">
+                            <label for="login-email">E-mail</label>
+                            <input type="email" id="login-email" placeholder="seu@email.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="login-pass">Senha</label>
+                            <input type="password" id="login-pass" placeholder="••••••••" required>
+                        </div>
+                        <div class="form-options">
+                            <label class="remember-me">
+                                <input type="checkbox"> Lembrar de mim
+                            </label>
+                            <a href="#" class="forgot-pass">Esqueci a senha</a>
+                        </div>
+                        <button type="submit" class="btn-auth">Entrar</button>
+                    </form>
+                    <p class="toggle-text">Não tem uma conta? <a href="#" id="to-signup">Cadastre-se</a></p>
+                </div>
+
+                <div id="signup-form-container" class="hidden">
+                    <div class="form-header">
+                        <h2>Criar Conta</h2>
+                        <p>Junte-se à nossa equipe e comece a ganhar!</p>
+                    </div>
+                    <form class="auth-form" id="signup-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="reg-user">Usuário</label>
+                                <input type="text" id="reg-user" placeholder="Ex: carlossilva" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="reg-email">E-mail</label>
+                                <input type="email" id="reg-email" placeholder="seu@email.com" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="reg-dept">Departamento</label>
+                                <select id="reg-dept" required>
+                                    <option value="" disabled selected>Selecione</option>
+                                    <option value="vendas">Vendas</option>
+                                    <option value="marketing">Marketing</option>
+                                    <option value="financeiro">Financeiro</option>
+                                    <option value="rh">RH</option>
+                                    <option value="engenharia">Engenharia</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="reg-dir">Diretoria</label>
+                                <select id="reg-dir" required>
+                                    <option value="" disabled selected>Selecione</option>
+                                    <option value="comercial">Comercial</option>
+                                    <option value="operacional">Operacional</option>
+                                    <option value="administrativa">Administrativa</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="reg-birth">Data de Nascimento</label>
+                                <input type="date" id="reg-birth" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="reg-adm">Data de Admissão</label>
+                                <input type="date" id="reg-adm" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reg-pass">Senha</label>
+                            <input type="password" id="reg-pass" placeholder="Mínimo 8 caracteres" required>
+                        </div>
+
+                        <button type="submit" class="btn-auth">Cadastrar</button>
+                    </form>
+                    <p class="toggle-text">Já tem uma conta? <a href="#" id="to-login">Faça Login</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginContainer = document.getElementById('login-form-container');
+            const signupContainer = document.getElementById('signup-form-container');
+            const toSignup = document.getElementById('to-signup');
+            const toLogin = document.getElementById('to-login');
+
+            toSignup.addEventListener('click', (e) => {
+                e.preventDefault();
+                loginContainer.classList.add('hidden');
+                signupContainer.classList.remove('hidden');
+                signupContainer.classList.add('content-fade');
+            });
+
+            toLogin.addEventListener('click', (e) => {
+                e.preventDefault();
+                signupContainer.classList.add('hidden');
+                loginContainer.classList.remove('hidden');
+                loginContainer.classList.add('content-fade');
+            });
+
+            // Auth Logic with LocalStorage (Persistence Fixed)
+            document.getElementById('login-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('login-email').value;
+                const pass = document.getElementById('login-pass').value;
+                const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+                
+                // Helper to find or create user
+                const getOrCreateUser = (email, username, defaultPoints) => {
+                    let user = allUsers.find(u => u.email === email);
+                    if (!user) {
+                        user = {
+                            username: username,
+                            email: email,
+                            points: defaultPoints,
+                            dept: 'Tecnologia',
+                            rank: defaultPoints > 0 ? 'Consultor Ouro' : 'Iniciante',
+                            history: [],
+                            notifications: []
+                        };
+                        allUsers.push(user);
+                        localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+                    }
+                    return user;
+                };
+
+                // Check for Admin
+                if (email === 'admin@mouraleite.com.br' && pass === 'admin') {
+                    const adminUser = getOrCreateUser(email, 'Carlos Silva', 2450);
+                    localStorage.setItem('moura_leite_user', JSON.stringify(adminUser));
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                // Check for Alex
+                if (email === 'alex.landuci@mouraleite.com.br' && pass === 'alex') {
+                    const alexUser = getOrCreateUser(email, 'Alexsanderson Landuci', 0);
+                    localStorage.setItem('moura_leite_user', JSON.stringify(alexUser));
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                // Regular User Login
+                const existingUser = allUsers.find(u => u.email === email || u.username === email);
+                if (existingUser) {
+                    localStorage.setItem('moura_leite_user', JSON.stringify(existingUser));
+                    window.location.href = 'index.html';
+                } else {
+                    alert('Usuário ou senha inválidos. Por favor, verifique seus dados.');
+                }
+            });
+
+            document.getElementById('signup-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const username = document.getElementById('reg-user').value;
+                const email = document.getElementById('reg-email').value;
+                const dept = document.getElementById('reg-dept').value;
+
+                // Create user object
+                const newUser = {
+                    username: username,
+                    email: email,
+                    dept: dept,
+                    points: 0,
+                    rank: 'Iniciante'
+                };
+
+                // Add to Global List
+                const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+                if (!allUsers.find(u => u.email === email)) {
+                    allUsers.push(newUser);
+                    localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+                }
+
+                // Set current session
+                localStorage.setItem('moura_leite_user', JSON.stringify(newUser));
+                
+                alert('Conta criada com sucesso! Bem-vindo, ' + username);
+                window.location.href = 'index.html';
+            });
+        });
+    </script>
+</body>
+</html>

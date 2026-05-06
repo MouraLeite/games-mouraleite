@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Gamificação | Moura Leite Loteamentos</title>
+    <meta name="description" content="Plataforma de gamificação e produtividade da Moura Leite Loteamentos de Botucatu.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        // Auth Guard: Redirect to login if no user is found
+        if (!localStorage.getItem('moura_leite_user')) {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-placeholder">
+                    <span class="m-letter">M</span><span class="l-letter">L</span>
+                </div>
+                <h2>Moura Leite</h2>
+                <p>Botucatu</p>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="ranking">
+                    <i class="fa-solid fa-trophy"></i>
+                    <span>Ranking</span>
+                </a>
+                <a href="#" class="nav-item" data-page="missoes">
+                    <i class="fa-solid fa-bullseye"></i>
+                    <span>Missões</span>
+                </a>
+                <a href="#" class="nav-item" data-page="conquistas">
+                    <i class="fa-solid fa-award"></i>
+                    <span>Conquistas</span>
+                </a>
+                <a href="#" class="nav-item" data-page="loja">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span>Prêmios</span>
+                </a>
+                <a href="#" class="nav-item" data-page="historico">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Histórico</span>
+                </a>
+                <a href="#" class="nav-item" id="logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Sair</span>
+                </a>
+            </nav>
+
+            <div class="user-profile-mini">
+                <div class="avatar">
+                    <img id="user-avatar-img" src="https://ui-avatars.com/api/?name=User&background=006837&color=fff" alt="User">
+                </div>
+                <div class="user-info">
+                    <span class="name">Carlos Silva</span>
+                    <span class="rank">Consultor Ouro</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Buscar missões, colegas...">
+                </div>
+                <div class="user-stats-top">
+                    <div class="stat-pill">
+                        <i class="fa-solid fa-coins"></i>
+                        <span id="user-points">2.450</span>
+                    </div>
+                    <div class="stat-pill">
+                        <i class="fa-solid fa-fire"></i>
+                        <span id="user-streak">12 Dias</span>
+                    </div>
+                    <div class="notification-wrapper">
+                        <button class="notification-btn" id="notification-btn">
+                            <i class="fa-solid fa-bell"></i>
+                            <span class="badge" id="notif-badge">0</span>
+                        </button>
+                        <div class="notif-dropdown hidden" id="notif-dropdown">
+                            <div class="notif-header">
+                                <h3>Notificações</h3>
+                                <button id="clear-notifs">Limpar</button>
+                            </div>
+                            <div class="notif-list" id="notif-list">
+                                <!-- Notifications injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div id="content-area" class="content-fade">
+                <!-- Dashboard Section -->
+                <section id="dashboard-page" class="page-section">
+                    <div class="welcome-hero">
+                        <div class="hero-content">
+                            <div class="hero-text">
+                                <h1>Olá, Alexsanderson Landuci! 👋</h1>
+                                <p id="hero-rank-msg">Você está a apenas <strong>500 pontos</strong> de subir para o nível <strong>Platina</strong>.</p>
+                                
+                                <div class="rank-progress-wrapper">
+                                    <div class="rank-labels">
+                                        <span>Iniciante</span>
+                                        <span>Bronze</span>
+                                    </div>
+                                    <div class="rank-bar-bg">
+                                        <div class="rank-bar-fill" style="width: 5%;"></div>
+                                    </div>
+                                    <span class="rank-status">0% concluído</span>
+                                </div>
+
+                                <div class="hero-btns">
+                                    <button class="btn-primary" onclick="showPage('missoes')">Ver Novas Missões</button>
+                                    <button class="btn-secondary" id="btn-ver-niveis">Ver Níveis e Bônus</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- Progress Card -->
+                        <div class="glass-card progress-card">
+                            <h3>Metas Mensais</h3>
+                            <div class="progress-circle-container">
+                                <svg class="progress-ring" width="120" height="120">
+                                    <circle class="progress-ring__circle-bg" stroke="#eee" stroke-width="8" fill="transparent" r="52" cx="60" cy="60"/>
+                                    <circle class="progress-ring__circle" id="main-progress" stroke="#006837" stroke-width="8" stroke-dasharray="326.7" stroke-dashoffset="81.6" fill="transparent" r="52" cx="60" cy="60"/>
+                                </svg>
+                                <div class="progress-label" id="meta-percent">0%</div>
+                            </div>
+                            <p id="meta-text">Metas: 0 de 4 completadas</p>
+                            <span class="status-tag" id="meta-status">Status: Iniciando</span>
+                        </div>
+
+                        <!-- Integration Quests -->
+                        <div class="glass-card missions-card">
+                            <div class="card-header">
+                                <h3>Missões de Integração</h3>
+                                <a href="#" onclick="showPage('missoes')">Ver todas</a>
+                            </div>
+                            <div class="mission-list">
+                                <div class="mission-item">
+                                    <div class="mission-icon social"><i class="fa-brands fa-linkedin"></i></div>
+                                    <div class="mission-details">
+                                        <h4>Moura Leite no LinkedIn</h4>
+                                        <p>Publique uma notícia da empresa</p>
+                                        <div class="mini-progress-bar"><div class="fill" style="width: 0%;"></div></div>
+                                    </div>
+                                    <div class="mission-reward">+150 XP</div>
+                                </div>
+                                <div class="mission-item">
+                                    <div class="mission-icon team"><i class="fa-solid fa-person-running"></i></div>
+                                    <div class="mission-details">
+                                        <h4>Corrida em Equipe</h4>
+                                        <p>Participe do treino de sábado</p>
+                                        <div class="mini-progress-bar"><div class="fill" style="width: 0%;"></div></div>
+                                    </div>
+                                    <div class="mission-reward">+300 XP</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leaderboard Preview -->
+                        <div class="glass-card ranking-card">
+                            <div class="card-header">
+                                <h3>Top do Mês</h3>
+                                <i class="fa-solid fa-crown"></i>
+                            </div>
+                            <div class="ranking-list">
+                                <div class="rank-item me first">
+                                    <span class="pos">1</span>
+                                    <img src="https://ui-avatars.com/api/?name=Carlos+S&background=006837&color=fff" alt="">
+                                    <span class="name">Você</span>
+                                    <span class="pts">0 pts</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quests Page -->
+                <section id="missoes-page" class="page-section hidden">
+                    <div class="section-title">
+                        <h2>Missões e Integração</h2>
+                        <p>Complete tarefas para ganhar pontos e fortalecer a equipe.</p>
+                    </div>
+                    <div class="quests-grid">
+                        <div class="quest-card">
+                            <div class="quest-badge social">Social</div>
+                            <i class="fa-brands fa-linkedin quest-main-icon" style="color: #0077b5;"></i>
+                            <h3>Embaixador Digital</h3>
+                            <p>Compartilhe o novo lançamento da Moura Leite no seu LinkedIn pessoal.</p>
+                            <div class="quest-footer">
+                                <span class="pts-gain">+150 pts</span>
+                                <button class="btn-outline">Enviar Link</button>
+                            </div>
+                        </div>
+                        <div class="quest-card">
+                            <div class="quest-badge team">Equipe</div>
+                            <i class="fa-solid fa-people-group quest-main-icon" style="color: #F1863B;"></i>
+                            <h3>Tarde dos Jogos</h3>
+                            <p>Participe da dinâmica de integração no auditório nesta sexta-feira.</p>
+                            <div class="quest-footer">
+                                <span class="pts-gain">+200 pts</span>
+                                <button class="btn-outline">Confirmar</button>
+                            </div>
+                        </div>
+                        <div class="quest-card">
+                            <div class="quest-badge health">Saúde</div>
+                            <i class="fa-solid fa-person-running quest-main-icon" style="color: #006837;"></i>
+                            <h3>Corrida Moura Leite</h3>
+                            <p>Junte-se aos colegas na corrida de 5km no Parque Cidade.</p>
+                            <div class="quest-footer">
+                                <span class="pts-gain">+300 pts</span>
+                                <button class="btn-outline">Participar</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Store Page -->
+                <section id="loja-page" class="page-section hidden">
+                    <div class="section-title">
+                        <h2>Loja de Prêmios</h2>
+                        <p>Troque seus pontos por itens exclusivos da Moura Leite.</p>
+                    </div>
+                    <div class="store-grid">
+                        <div class="store-card">
+                            <div class="item-img"><i class="fa-solid fa-mug-hot"></i></div>
+                            <h3>Caneca Personalizada</h3>
+                            <p>Cerâmica premium com logo.</p>
+                            <div class="item-footer">
+                                <span class="price">800 pts</span>
+                                <button class="btn-buy" onclick="buyItem('Caneca', 800)">Trocar</button>
+                            </div>
+                        </div>
+                        <div class="store-card">
+                            <div class="item-img"><i class="fa-solid fa-pen-fancy"></i></div>
+                            <h3>Caneta Executiva</h3>
+                            <p>Metal com escrita macia.</p>
+                            <div class="item-footer">
+                                <span class="price">450 pts</span>
+                                <button class="btn-buy" onclick="buyItem('Caneta', 450)">Trocar</button>
+                            </div>
+                        </div>
+                        <div class="store-card">
+                            <div class="item-img"><i class="fa-solid fa-book"></i></div>
+                            <h3>Caderno de Anotações</h3>
+                            <p>Capa dura em couro.</p>
+                            <div class="item-footer">
+                                <span class="price">1.200 pts</span>
+                                <button class="btn-buy" onclick="buyItem('Caderno', 1200)">Trocar</button>
+                            </div>
+                        </div>
+                        <div class="store-card">
+                            <div class="item-img"><i class="fa-solid fa-bottle-water"></i></div>
+                            <h3>Garrafa Térmica</h3>
+                            <p>Aço inox 500ml.</p>
+                            <div class="item-footer">
+                                <span class="price">1.500 pts</span>
+                                <button class="btn-buy" onclick="buyItem('Garrafa', 1500)">Trocar</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Achievements Page -->
+                <section id="conquistas-page" class="page-section hidden">
+                    <div class="section-title">
+                        <h2>Minhas Conquistas</h2>
+                        <p>Medalhas e marcos da sua jornada na Moura Leite.</p>
+                    </div>
+                    <div class="achievements-grid">
+                        <div class="achievement-card unlocked">
+                            <div class="medal-icon"><i class="fa-solid fa-handshake"></i></div>
+                            <div class="achievement-info">
+                                <h3>Bem-vindo!</h3>
+                                <p>Primeiro acesso à plataforma realizado.</p>
+                                <span class="date-unlocked">Conquistado hoje</span>
+                            </div>
+                        </div>
+                        <div class="achievement-card locked">
+                            <div class="medal-icon"><i class="fa-solid fa-fire"></i></div>
+                            <div class="achievement-info">
+                                <h3>Frequência (10 dias)</h3>
+                                <p>Visite a plataforma por 10 dias seguidos.</p>
+                            </div>
+                            <div class="lock-overlay"><i class="fa-solid fa-lock"></i></div>
+                        </div>
+                        <div class="achievement-card locked">
+                            <div class="medal-icon"><i class="fa-solid fa-trophy"></i></div>
+                            <div class="achievement-info">
+                                <h3>Centenário (100 dias)</h3>
+                                <p>100 dias de participação ativa.</p>
+                            </div>
+                            <div class="lock-overlay"><i class="fa-solid fa-lock"></i></div>
+                        </div>
+                        <div class="achievement-card locked">
+                            <div class="medal-icon"><i class="fa-solid fa-crown"></i></div>
+                            <div class="achievement-info">
+                                <h3>Veterano (1 ano)</h3>
+                                <p>1 ano integrando a equipe Moura Leite.</p>
+                            </div>
+                            <div class="lock-overlay"><i class="fa-solid fa-lock"></i></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- History Page -->
+                <section id="historico-page" class="page-section hidden">
+                    <div class="section-title">
+                        <h2>Histórico de Saques</h2>
+                        <p>Acompanhe todos os itens que você já resgatou.</p>
+                    </div>
+                    <div class="glass-card">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Data</th>
+                                    <th>Horário</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-body">
+                                <!-- Data will be injected here -->
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 2rem; color: #999;">Nenhum resgate realizado ainda.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+    <!-- Ranks Info Modal -->
+    <div id="ranks-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal" id="close-ranks">&times;</span>
+            <div class="section-title">
+                <h2>Níveis e Benefícios</h2>
+                <p>Descubra como subir na carreira e quais bônus você ganha.</p>
+            </div>
+            
+            <div class="ranks-grid">
+                <div class="rank-benefit-card">
+                    <div class="rank-badge rank-iniciante"><i class="fa-solid fa-seedling"></i></div>
+                    <h4>Iniciante</h4>
+                    <p>0 - 500 pts</p>
+                    <p><em>Início da jornada.</em></p>
+                </div>
+                <div class="rank-benefit-card">
+                    <div class="rank-badge rank-bronze"><i class="fa-solid fa-medal"></i></div>
+                    <h4>Bronze</h4>
+                    <p>501 - 1.500 pts</p>
+                    <p><strong>Bônus:</strong> 1.1x pontos em missões.</p>
+                </div>
+                <div class="rank-benefit-card">
+                    <div class="rank-badge rank-prata"><i class="fa-solid fa-award"></i></div>
+                    <h4>Prata</h4>
+                    <p>1.501 - 3.000 pts</p>
+                    <p><strong>Bônus:</strong> 1.2x pontos + Medalha de Perfil.</p>
+                </div>
+                <div class="rank-benefit-card">
+                    <div class="rank-badge rank-ouro"><i class="fa-solid fa-trophy"></i></div>
+                    <h4>Ouro</h4>
+                    <p>3.001 - 6.000 pts</p>
+                    <p><strong>Bônus:</strong> 1.5x pontos + Itens Exclusivos na Loja.</p>
+                </div>
+                <div class="rank-benefit-card">
+                    <div class="rank-badge rank-platina"><i class="fa-solid fa-crown"></i></div>
+                    <h4>Platina</h4>
+                    <p>6.001 - 10.000 pts</p>
+                    <p><strong>Bônus:</strong> 2.0x pontos + Acesso VIP RH.</p>
+                </div>
+                <div class="rank-benefit-card">
+                    <div class="rank-badge rank-diamante"><i class="fa-solid fa-gem"></i></div>
+                    <h4>Diamante</h4>
+                    <p>10.000+ pts</p>
+                    <p><strong>Bônus:</strong> Prêmios Personalizados Moura Leite.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
