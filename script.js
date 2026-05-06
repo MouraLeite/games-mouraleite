@@ -1,13 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Global Master Reset (One-time for all users)
-    if (!localStorage.getItem('moura_leite_master_reset_v1')) {
-        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+    if (!localStorage.getItem('moura_leite_master_reset_v2')) {
+        let allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        
         allUsers.forEach(user => {
             if (user.email !== 'admin@mouraleite.com.br') {
                 user.points = 0;
                 user.history = [];
                 user.lastCheckIn = null;
                 user.lastLunchWeek = null;
+                user.lastGamesWeek = null;
+                user.lastLinkedInMonth = null;
+                user.lunchCount = 0;
+                user.linkedInCount = 0;
                 user.streak = 1;
                 user.visitCount = 1;
             }
@@ -22,11 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionUser.history = [];
             sessionUser.lastCheckIn = null;
             sessionUser.lastLunchWeek = null;
+            sessionUser.lastGamesWeek = null;
+            sessionUser.lastLinkedInMonth = null;
+            sessionUser.lunchCount = 0;
+            sessionUser.linkedInCount = 0;
             localStorage.setItem('moura_leite_user', JSON.stringify(sessionUser));
         }
         
-        localStorage.setItem('moura_leite_master_reset_v1', 'true');
-        window.location.reload(); // Reload to apply changes
+        localStorage.setItem('moura_leite_master_reset_v2', 'true');
+        window.location.reload();
     }
 
     // Load User Data from LocalStorage
@@ -204,29 +213,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateAchievements = () => {
         const achCards = document.querySelectorAll('.achievement-card');
         const visits = storedUser.visitCount || 1;
-        const streak = storedUser.streak || 1;
-
-        // Welcome (Always unlocked if logged in)
         
         // Frequency (10 dias totais)
-        if (visits >= 10) {
-            const freqAch = achCards[1];
-            if (freqAch && freqAch.classList.contains('locked')) {
-                freqAch.classList.remove('locked');
-                freqAch.classList.add('unlocked');
-                freqAch.querySelector('.lock-overlay')?.remove();
-            }
-        }
+        if (visits >= 10) unlockAch(achCards[1]);
         // Centenário (100 dias totais)
-        if (visits >= 100) {
-            const centAch = achCards[2];
-            if (centAch && centAch.classList.contains('locked')) {
-                centAch.classList.remove('locked');
-                centAch.classList.add('unlocked');
-                centAch.querySelector('.lock-overlay')?.remove();
+        if (visits >= 100) unlockAch(achCards[2]);
+
+        // Amigo da Galera (24 almoços)
+        if ((storedUser.lunchCount || 0) >= 24) unlockAch(achCards[4]);
+
+        // Porta Voz (10 LinkedIn)
+        if ((storedUser.linkedInCount || 0) >= 10) unlockAch(achCards[5]);
+    };
+
+    function unlockAch(card) {
+        if (card && card.classList.contains('locked')) {
+            card.classList.remove('locked');
+            card.classList.add('unlocked');
+            card.querySelector('.lock-overlay')?.remove();
+            
+            // Add a "Unlocked" badge if it doesn't have a date yet
+            if (!card.querySelector('.date-unlocked')) {
+                const info = card.querySelector('.achievement-info');
+                const badge = document.createElement('span');
+                badge.className = 'date-unlocked';
+                badge.textContent = 'Conquistado!';
+                info.appendChild(badge);
             }
         }
-    };
+    }
 
     // Update Ranking with All Users (excluding admin)
     const updateRanking = () => {
@@ -421,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>
                     ${tx.item} 
                     ${tx.photo ? `<button class="view-photo-btn" onclick="viewPhoto('${tx.photo}')" title="Ver Comprovante">📸</button>` : ''}
+                    ${tx.link ? `<a href="${tx.link}" target="_blank" class="view-link-btn" title="Ver Publicação" style="text-decoration:none; margin-left:5px;">🔗</a>` : ''}
                 </td>
                 <td>${tx.date}</td>
                 <td>${tx.time}</td>
@@ -614,6 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 userPoints += 5;
                 storedUser.points = userPoints;
                 storedUser.lastLunchWeek = currentWeek;
+                storedUser.lunchCount = (storedUser.lunchCount || 0) + 1;
                 
                 const now = new Date();
                 const transaction = {
@@ -650,11 +667,13 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
         const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
         const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
+        
         if (userIndex !== -1) {
-            // Update all fields to ensure persistence after logout
             allUsers[userIndex] = { ...storedUser };
-            localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+        } else {
+            allUsers.push({ ...storedUser });
         }
+        localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
     }
 
     // Embaixador Digital Logic (Monthly)
@@ -678,6 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     userPoints += 15;
                     storedUser.points = userPoints;
                     storedUser.lastLinkedInMonth = currentMonth;
+                    storedUser.linkedInCount = (storedUser.linkedInCount || 0) + 1;
                     
                     const transaction = {
                         user: storedUser.username,
@@ -685,10 +705,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         date: now.toLocaleDateString('pt-BR'),
                         time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                         status: 'Concluído',
+                        link: link,
                         type: 'Ganho'
                     };
                     if (!storedUser.history) storedUser.history = [];
                     storedUser.history.unshift(transaction);
+                    
+                    // Global Sync
+                    const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
+                    globalHistory.unshift(transaction);
+                    localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
                     
                     saveAndSync();
                     updatePointsDisplay();
