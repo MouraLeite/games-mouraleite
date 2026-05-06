@@ -84,6 +84,114 @@ document.addEventListener('DOMContentLoaded', () => {
         storedUser.username = 'ADMIN';
     }
 
+    const isAdmin = storedUser.email === 'admin@mouraleite.com.br';
+    const adminMenuItem = document.getElementById('admin-menu-item');
+    if (isAdmin && adminMenuItem) {
+        adminMenuItem.classList.remove('hidden');
+    }
+
+    // Admin User Management Logic
+    const renderAdminUsers = () => {
+        const body = document.getElementById('admin-users-body');
+        if (!body) return;
+
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        
+        body.innerHTML = allUsers.map(user => {
+            const statusLabel = user.disabled ? 'Inativo' : 'Ativo';
+            const statusClass = user.disabled ? 'status-locked' : 'status-unlocked';
+            
+            return `
+                <tr>
+                    <td><strong>${user.username}</strong></td>
+                    <td>${user.email}</td>
+                    <td>${user.dept || '-'}</td>
+                    <td>${user.diretoria || '-'}</td>
+                    <td>${user.points} pts</td>
+                    <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                    <td>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                            <button onclick="editUser('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px;">Editar</button>
+                            <button onclick="resetUserPassword('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#f39c12;">Resetar Senha</button>
+                            <button onclick="toggleUserStatus('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#666;">${user.disabled ? 'Ativar' : 'Desativar'}</button>
+                            ${user.email !== 'admin@mouraleite.com.br' ? `<button onclick="deleteUser('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#d32f2f;">Excluir</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    };
+
+    window.resetUserPassword = (email) => {
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        const user = allUsers.find(u => u.email === email);
+        if (user) {
+            const newPass = prompt(`Digite a nova senha para o usuário ${user.username}:`);
+            if (newPass) {
+                user.password = newPass;
+                localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+                alert(`Senha do usuário ${user.username} alterada com sucesso!`);
+                addNotification(`Senha de ${user.username} resetada pelo administrador.`);
+            }
+        }
+    };
+
+    window.toggleUserStatus = (email) => {
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        const user = allUsers.find(u => u.email === email);
+        if (user) {
+            user.disabled = !user.disabled;
+            localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+            renderAdminUsers();
+            addNotification(`Usuário ${user.username} ${user.disabled ? 'desativado' : 'ativado'}.`);
+        }
+    };
+
+    window.deleteUser = (email) => {
+        if (confirm(`Tem certeza que deseja excluir o usuário ${email}? Esta ação é irreversível.`)) {
+            let allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+            allUsers = allUsers.filter(u => u.email !== email);
+            localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+            renderAdminUsers();
+            addNotification(`Usuário ${email} excluído.`);
+        }
+    };
+
+    window.editUser = (email) => {
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        const user = allUsers.find(u => u.email === email);
+        if (user) {
+            const newName = prompt('Novo nome:', user.username);
+            const newPoints = prompt('Novos pontos:', user.points);
+            
+            if (newName !== null) user.username = newName;
+            if (newPoints !== null) {
+                const p = parseInt(newPoints) || 0;
+                user.points = p;
+                
+                // If editing self, update current session variables
+                if (email === storedUser.email) {
+                    storedUser.points = p;
+                    userPoints = p;
+                    localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+                    updatePointsDisplay();
+                    updateUIWithUser(); // Refresh names/avatars if changed
+                }
+            }
+            
+            if (newName !== null && email === storedUser.email) {
+                storedUser.username = newName;
+                localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+                updateUIWithUser();
+            }
+            
+            localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+            renderAdminUsers();
+            updateRanking();
+            addNotification(`Usuário ${email} editado.`);
+        }
+    };
+
     let userPoints = storedUser.points;
     const pointsElement = document.getElementById('user-points');
     
@@ -92,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const lastVisit = storedUser.lastVisit;
 
     if (lastVisit !== today) {
-        // Increment days logged in on every new unique day
         storedUser.streak = (storedUser.streak || 0) + 1;
         storedUser.visitCount = (storedUser.visitCount || 0) + 1;
         storedUser.lastVisit = today;
@@ -101,12 +208,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Rank Definitions
     const ranks = [
-        { name: 'Iniciante', min: 0, next: 500 },
-        { name: 'Bronze', min: 501, next: 1500 },
-        { name: 'Prata', min: 1501, next: 3000 },
-        { name: 'Ouro', min: 3001, next: 6000 },
-        { name: 'Platina', min: 6001, next: 10000 },
-        { name: 'Diamante', min: 10001, next: Infinity }
+        { name: 'Iniciante', min: 0, next: 500, icon: 'fa-seedling', class: 'rank-iniciante' },
+        { name: 'Bronze', min: 501, next: 1500, icon: 'fa-medal', class: 'rank-bronze' },
+        { name: 'Prata', min: 1501, next: 3000, icon: 'fa-award', class: 'rank-prata' },
+        { name: 'Ouro', min: 3001, next: 6000, icon: 'fa-trophy', class: 'rank-ouro' },
+        { name: 'Platina', min: 6001, next: 10000, icon: 'fa-crown', class: 'rank-platina' },
+        { name: 'Diamante', min: 10001, next: Infinity, icon: 'fa-gem', class: 'rank-diamante' }
     ];
 
     // Update UI with User Data
@@ -138,8 +245,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const rankFill = document.querySelector('.rank-bar-fill');
         const rankLabels = document.querySelectorAll('.rank-labels span');
         const rankStatusText = document.querySelector('.rank-status');
+        const heroRankIcon = document.getElementById('hero-rank-icon');
 
         if (heroTitle) heroTitle.textContent = `Olá, ${storedUser.username.split(' ')[0]}! 👋`;
+        
+        // Inject Hero Rank Icon
+        if (heroRankIcon) {
+            heroRankIcon.innerHTML = `<i class="fa-solid ${currentRankObj.icon}"></i>`;
+            heroRankIcon.className = `hero-rank-badge ${currentRankObj.class}`;
+        }
         
         if (currentRankObj !== nextRankObj) {
             const pointsForNext = nextRankObj.min - userPoints;
@@ -158,6 +272,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (heroSub) heroSub.innerHTML = `Parabéns! Você atingiu o nível máximo: <strong>${currentRankObj.name}</strong>.`;
             if (rankFill) rankFill.style.width = '100%';
             if (rankStatusText) rankStatusText.textContent = 'Nível Máximo Atingido';
+            if (rankLabels.length >= 2) {
+                const prevRank = ranks[ranks.indexOf(currentRankObj) - 1] || currentRankObj;
+                rankLabels[0].textContent = prevRank.name;
+                rankLabels[1].textContent = currentRankObj.name;
+            }
         }
 
         // Update Goals Widget (Dynamic Integration)
@@ -325,6 +444,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetSection) {
             targetSection.classList.remove('hidden');
             targetSection.classList.add('content-fade');
+            
+            // Special rendering for specific pages
+            if (pageId === 'admin-users') renderAdminUsers();
+            if (pageId === 'historico') renderHistory();
+            if (pageId === 'conquistas') updateAchievements();
+            if (pageId === 'ranking') renderFullRanking();
         }
 
         // Update active nav item
@@ -386,6 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 updateRanking(); // Refresh ranking display
+                updateUIWithUser(); // Refresh banner/ranks
                 addNotification(`Você resgatou: ${itemName}. Retire no RH!`);
                 alert(`Sucesso! Você adquiriu: ${itemName}. Retire seu item no RH.`);
             }
@@ -474,21 +600,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `;
         }).join('');
-    };
-
-    // Update the showPage function to render history/achievements/ranking when needed
-    const originalShowPage = window.showPage;
-    window.showPage = function(pageId) {
-        originalShowPage(pageId);
-        if (pageId === 'historico') {
-            renderHistory();
-        }
-        if (pageId === 'conquistas') {
-            updateAchievements();
-        }
-        if (pageId === 'ranking') {
-            renderFullRanking();
-        }
     };
 
     function updatePointsDisplay() {
@@ -693,7 +804,15 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             if (storedUser.lastLinkedInMonth !== currentMonth) {
                 const link = prompt('Insira o link da sua publicação no LinkedIn para validação:');
+                
                 if (link) {
+                    // Validar se é um link real
+                    const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/;
+                    if (!urlPattern.test(link)) {
+                        alert('Por favor, insira um link válido (ex: https://linkedin.com/...)');
+                        return;
+                    }
+
                     userPoints += 15;
                     storedUser.points = userPoints;
                     storedUser.lastLinkedInMonth = currentMonth;
@@ -718,6 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     saveAndSync();
                     updatePointsDisplay();
+                    updateUIWithUser();
                     updateRanking();
                     updateUIWithUser();
                     updateEmbaixadorUI();
@@ -806,4 +926,5 @@ document.addEventListener('DOMContentLoaded', () => {
     updateEmbaixadorUI();
     updateJogosUI();
     updatePointsDisplay();
+    updateUIWithUser();
 });

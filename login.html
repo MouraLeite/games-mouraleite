@@ -140,65 +140,77 @@
                 loginContainer.classList.add('content-fade');
             });
 
-            // Auth Logic with LocalStorage (Persistence Fixed)
+            // Helper to get all users safely
+            const getAllUsers = () => {
+                try {
+                    const data = localStorage.getItem('moura_leite_all_users');
+                    return data ? JSON.parse(data) : [];
+                } catch (e) {
+                    console.error('Error parsing users', e);
+                    return [];
+                }
+            };
+
+            // Helper to find or create user
+            const getOrCreateUser = (email, username, defaultPoints) => {
+                const allUsers = getAllUsers();
+                let user = allUsers.find(u => u.email === email);
+                if (!user) {
+                    user = {
+                        username: username,
+                        email: email,
+                        points: defaultPoints,
+                        dept: 'Tecnologia',
+                        rank: defaultPoints > 0 ? 'Consultor Ouro' : 'Iniciante'
+                    };
+                    allUsers.push(user);
+                    localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+                }
+                return user;
+            };
+
+            // Auth Logic
             document.getElementById('login-form').addEventListener('submit', (e) => {
                 e.preventDefault();
                 const email = document.getElementById('login-email').value;
                 const pass = document.getElementById('login-pass').value;
-                const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
-                
-                // Helper to find or create user
-                const getOrCreateUser = (email, username, defaultPoints) => {
-                    let user = allUsers.find(u => u.email === email);
-                    if (!user) {
-                        user = {
-                            username: username,
-                            email: email,
-                            points: defaultPoints,
-                            dept: 'Tecnologia',
-                            rank: defaultPoints > 0 ? 'Consultor Ouro' : 'Iniciante',
-                            history: [],
-                            notifications: []
-                        };
-                        allUsers.push(user);
-                        localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+
+                const allUsers = getAllUsers();
+                const user = allUsers.find(u => u.email === email);
+
+                // 1. Check for Admin Default (only if not changed in DB)
+                if (email === 'admin@mouraleite.com.br') {
+                    const adminInDb = user || getOrCreateUser(email, 'ADMIN', 1500);
+                    if (adminInDb.password === pass || (!adminInDb.password && pass === 'admin')) {
+                        localStorage.setItem('moura_leite_user', JSON.stringify(adminInDb));
+                        window.location.href = 'index.html';
+                        return;
                     }
-                    return user;
-                };
-
-                // Check for Admin
-                if (email === 'admin@mouraleite.com.br' && pass === 'admin') {
-                    const adminUser = getOrCreateUser(email, 'ADMIN', 1500);
-                    adminUser.username = 'ADMIN'; // Force correction
-                    localStorage.setItem('moura_leite_user', JSON.stringify(adminUser));
-                    window.location.href = 'index.html';
-                    return;
                 }
 
-                // Check for Alex
-                if (email === 'alex.landuci@mouraleite.com.br' && pass === 'alex') {
-                    const alexUser = getOrCreateUser(email, 'Alexsanderson Landuci', 0);
-                    // Force name correction and reset if needed
-                    alexUser.username = 'Alexsanderson Landuci';
-                    alexUser.dept = 'RH';
-                    alexUser.diretoria = 'Financeira';
-                    if (alexUser.points === 2450) {
-                        alexUser.points = 0;
+                // 2. Check for Alex Default (only if not changed in DB)
+                if (email === 'alex.landuci@mouraleite.com.br') {
+                    const alexInDb = user || getOrCreateUser(email, 'Alexsanderson Landuci', 0);
+                    if (alexInDb.password === pass || (!alexInDb.password && pass === 'alex')) {
+                        // Force data sync for Alex as requested before
+                        alexInDb.username = 'Alexsanderson Landuci';
+                        alexInDb.dept = 'RH';
+                        alexInDb.diretoria = 'Financeira';
+                        localStorage.setItem('moura_leite_user', JSON.stringify(alexInDb));
+                        window.location.href = 'index.html';
+                        return;
                     }
-                    localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
-                    localStorage.setItem('moura_leite_user', JSON.stringify(alexUser));
-                    window.location.href = 'index.html';
-                    return;
                 }
 
-                // Regular User Login
-                const existingUser = allUsers.find(u => u.email === email || u.username === email);
-                if (existingUser) {
-                    localStorage.setItem('moura_leite_user', JSON.stringify(existingUser));
-                    window.location.href = 'index.html';
-                } else {
-                    alert('Usuário ou senha inválidos. Por favor, verifique seus dados.');
+                // 3. Normal login check for all other users (or updated Admin/Alex)
+                if (user) {
+                    if (user.password === pass || (!user.password && pass === '123456')) { 
+                        localStorage.setItem('moura_leite_user', JSON.stringify(user));
+                        window.location.href = 'index.html';
+                        return;
+                    }
                 }
+                alert('E-mail ou senha incorretos.');
             });
 
             document.getElementById('signup-form').addEventListener('submit', (e) => {
@@ -207,28 +219,26 @@
                 const email = document.getElementById('reg-email').value;
                 const dept = document.getElementById('reg-dept').value;
                 const diretoria = document.getElementById('reg-dir').value;
+                const password = document.getElementById('reg-pass').value;
 
-                // Create user object
                 const newUser = {
-                    username: username,
-                    email: email,
-                    dept: dept,
-                    diretoria: diretoria,
+                    username,
+                    email,
+                    dept,
+                    diretoria,
+                    password,
                     points: 0,
                     rank: 'Iniciante'
                 };
 
-                // Add to Global List
-                const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+                const allUsers = getAllUsers();
                 if (!allUsers.find(u => u.email === email)) {
                     allUsers.push(newUser);
                     localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
                 }
 
-                // Set current session
                 localStorage.setItem('moura_leite_user', JSON.stringify(newUser));
-                
-                alert('Conta criada com sucesso! Bem-vindo, ' + username);
+                alert('Conta criada com sucesso!');
                 window.location.href = 'index.html';
             });
         });
