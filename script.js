@@ -1,4 +1,27 @@
+// Global error handler for debugging
+window.addEventListener('error', (event) => {
+    console.error('Global script error:', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error?.stack
+    });
+});
+
+// Check for Firebase availability
+console.log('Checking Firebase dependencies...');
+if (typeof firebase === 'undefined') {
+    console.error('Firebase SDK not loaded - check CDN connection');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('Script iniciando...', {
+        docReady: document.readyState,
+        location: window.location.href,
+        hasFirebase: typeof firebase !== 'undefined',
+        hasDb: typeof db !== 'undefined'
+    });
     // Global Master Reset (One-time for all users)
     if (!localStorage.getItem('moura_leite_master_reset_v2')) {
         let allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
