@@ -61,6 +61,10 @@
                     <i class="fa-solid fa-users-gear"></i>
                     <span>Gestão</span>
                 </a>
+                <a href="#" class="nav-item hidden" data-page="admin-missions" id="admin-missions-menu-item">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span>Cadastrar Missões</span>
+                </a>
                 <a href="#" class="nav-item" id="logout-btn">
                     <i class="fa-solid fa-right-from-bracket"></i>
                     <span>Sair</span>
@@ -246,7 +250,7 @@
                         <h2>Missões e Integração</h2>
                         <p>Complete tarefas para ganhar pontos e fortalecer a equipe.</p>
                     </div>
-                    <div class="quests-grid">
+                    <div class="quests-grid" id="quests-grid">
                         <div class="quest-card">
                             <div class="quest-badge daily">Diário</div>
                             <i class="fa-solid fa-calendar-check quest-main-icon" style="color: #1976d2;"></i>
@@ -411,13 +415,9 @@
                 </section>
 
                 <!-- History Page -->
-                </section>
-
-                <!-- History Page -->
                 <section id="historico-page" class="page-section hidden">
                     <div class="section-title">
-                        <h2>Histórico de Saques</h2>
-                        <p>Acompanhe todos os itens que você já resgatou.</p>
+                        <h2>Histórico</h2>
                     </div>
                     <div class="glass-card">
                         <table class="history-table">
@@ -463,6 +463,84 @@
                                 <!-- Users will be injected here -->
                             </tbody>
                         </table>
+                    </div>
+                </section>
+
+                <!-- Admin Mission Creation Page -->
+                <section id="admin-missions-page" class="page-section hidden">
+                    <div class="section-title">
+                        <h2>Cadastro de Missões</h2>
+                        <p>Crie novas missões para os colaboradores completarem.</p>
+                    </div>
+                    <div class="glass-card">
+                        <form id="mission-form" class="mission-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="mission-name">Nome da Missão</label>
+                                    <input type="text" id="mission-name" placeholder="Ex: Check-in Diário" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mission-frequency">Frequência</label>
+                                    <select id="mission-frequency" required>
+                                        <option value="" disabled selected>Selecione</option>
+                                        <option value="daily">Diário</option>
+                                        <option value="weekly">Semanal</option>
+                                        <option value="monthly">Mensal</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="mission-description">Descrição</label>
+                                <textarea id="mission-description" placeholder="Descreva a missão em detalhes..." rows="3" required></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="mission-points">Pontos</label>
+                                    <input type="number" id="mission-points" placeholder="Ex: 5" min="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mission-icon">Ícone</label>
+                                    <div class="icon-field-row">
+                                        <select id="mission-icon" required>
+                                            <option value="" disabled selected>Selecione o ícone</option>
+                                            <option value="fa-calendar-check">Calendário</option>
+                                            <option value="fa-people-arrows">Integração</option>
+                                            <option value="fa-handshake">Reunião</option>
+                                            <option value="fa-linkedin">LinkedIn</option>
+                                            <option value="fa-share-nodes">Compartilhamento</option>
+                                            <option value="fa-award">Conquista</option>
+                                            <option value="fa-bell">Notificação</option>
+                                            <option value="fa-flag-checkered">Desafio</option>
+                                            <option value="fa-rocket">Lançamento</option>
+                                            <option value="fa-heart">Engajamento</option>
+                                        </select>
+                                        <div id="mission-icon-preview" class="icon-preview-box" aria-label="Pré-visualização do ícone">
+                                            <i class="fa-solid fa-question"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mission-color">Cor do Ícone</label>
+                                    <input type="color" id="mission-color" value="#1976d2" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="mission-validation-type">Tipo de Validação</label>
+                                    <select id="mission-validation-type" required>
+                                        <option value="" disabled selected>Selecione</option>
+                                        <option value="button">Botão Simples</option>
+                                        <option value="photo">Foto</option>
+                                        <option value="link">Link</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mission-active">Ativa</label>
+                                    <input type="checkbox" id="mission-active" checked>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-auth">Cadastrar Missão</button>
+                        </form>
                     </div>
                 </section>
             </div>

@@ -56,6 +56,60 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.reload();
     }
 
+    // Server Time Validation (Anti-cheat: prevent Windows date manipulation)
+    let serverTimeOffset = 0;
+    let serverTimeLastSync = Date.now();
+
+    const syncServerTime = async () => {
+        try {
+            // Use Firebase server timestamp as reference
+            const testRef = db.collection('_server_time').doc('sync');
+            const syncDoc = await testRef.get();
+            const serverTime = syncDoc.exists && syncDoc.data().timestamp 
+                ? syncDoc.data().timestamp.toDate().getTime()
+                : Date.now();
+            
+            serverTimeOffset = serverTime - Date.now();
+            serverTimeLastSync = Date.now();
+            console.log('Server time synced, offset:', serverTimeOffset, 'ms');
+        } catch (e) {
+            console.warn('Could not sync server time:', e);
+        }
+    };
+
+    const getServerTime = () => {
+        // If last sync was over 5 minutes ago, use local time with caution
+        const timeSinceSync = Date.now() - serverTimeLastSync;
+        if (timeSinceSync > 300000) {
+            // 5 minutes passed, prefer local with notification
+            return Date.now();
+        }
+        return Date.now() + serverTimeOffset;
+    };
+
+    const logMissionAttempt = async (userId, missionId, missionName, success, timestamp) => {
+        try {
+            const logsRef = db.collection('mission_logs').doc();
+            await logsRef.set({
+                userId,
+                missionId,
+                missionName,
+                success,
+                clientTime: new Date(timestamp),
+                serverTime: firebase.firestore.FieldValue.serverTimestamp(),
+                userAgent: navigator.userAgent
+            });
+        } catch (e) {
+            console.error('Error logging mission attempt:', e);
+        }
+    };
+
+    // Initial sync on page load
+    syncServerTime();
+
+    // Resync every 10 minutes
+    setInterval(syncServerTime, 600000);
+
     // Load User Data from LocalStorage (Current Session)
     const storedUser = JSON.parse(localStorage.getItem('moura_leite_user')) || {
         username: 'Novo Colaborador',
@@ -79,8 +133,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof renderAdminUsers === 'function') renderAdminUsers();
     });
 
-    // Visit Tracking & Date Helpers
-    const now = new Date();
+    // Visit Tracking & Date Helpers (Now using server-synced time)
+    const now = new Date(getServerTime());
     const todayStr = now.toDateString();
     const currentMonth = (now.getMonth() + 1) + '-' + now.getFullYear();
     
@@ -120,8 +174,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isAdmin = storedUser.email === 'admin@mouraleite.com.br';
     const adminMenuItem = document.getElementById('admin-menu-item');
+    const adminMissionsMenuItem = document.getElementById('admin-missions-menu-item');
     if (isAdmin && adminMenuItem) {
         adminMenuItem.classList.remove('hidden');
+    }
+    if (isAdmin && adminMissionsMenuItem) {
+        adminMissionsMenuItem.classList.remove('hidden');
     }
 
     // Admin User Management Logic
@@ -154,6 +212,165 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `;
         }).join('');
+    };
+
+    // Admin Mission Creation Logic
+    const renderAdminMissions = () => {
+        const form = document.getElementById('mission-form');
+        const iconSelect = document.getElementById('mission-icon');
+        const iconPreview = document.getElementById('mission-icon-preview');
+
+        if (iconSelect && iconPreview) {
+            const updateIconPreview = () => {
+                const iconValue = iconSelect.value || 'fa-question';
+                iconPreview.innerHTML = `<i class="fa-solid ${iconValue}"></i>`;
+            };
+            iconSelect.addEventListener('change', updateIconPreview);
+            updateIconPreview();
+        }
+
+        if (form) {
+            form.addEventListener('submit', handleMissionSubmit);
+        }
+    };
+
+    const renderCustomMissions = () => {
+        const questsGrid = document.getElementById('quests-grid');
+        if (!questsGrid) return;
+
+        // Remove previously injected custom missions to avoid duplicates
+        questsGrid.querySelectorAll('.custom-quest-card').forEach(card => card.remove());
+
+        const missions = JSON.parse(localStorage.getItem('moura_leite_missions')) || [];
+        if (missions.length === 0) {
+            return;
+        }
+
+        const multiplier = getCurrentMultiplier();
+        questsGrid.insertAdjacentHTML('beforeend', missions
+            .filter(m => m.active)
+            .map(mission => {
+                const badgeLabel = mission.frequency === 'daily' ? 'Diário' : mission.frequency === 'weekly' ? 'Semanal' : 'Mensal';
+                const pointValue = Math.floor((mission.points || 0) * multiplier);
+                const iconClass = mission.icon ? `fa-solid ${mission.icon}` : 'fa-solid fa-bullseye';
+                const iconColor = mission.color || '#1976d2';
+                
+                // Check if mission was already completed this period
+                const lastKey = mission.frequency === 'daily' ? 'lastCustomDaily_' + mission.id
+                              : mission.frequency === 'weekly' ? 'lastCustomWeekly_' + mission.id
+                              : 'lastCustomMonthly_' + mission.id;
+                const dateKey = mission.frequency === 'daily' ? todayStr
+                             : mission.frequency === 'weekly' ? currentWeek
+                             : currentMonth;
+                
+                const isCompleted = storedUser[lastKey] === dateKey;
+                const buttonText = isCompleted ? 'Concluído' : 
+                    (mission.validationType === 'photo' ? 'Enviar Foto' : 
+                     mission.validationType === 'link' ? 'Enviar Link' : 'Validar');
+                const buttonDisabled = isCompleted ? 'disabled' : '';
+                const actionLabel = mission.validationType === 'photo' ? 'Enviar Foto' : mission.validationType === 'link' ? 'Enviar Link' : 'Validar';
+                
+                const adminActions = isAdmin ? `
+                            <div class="admin-mission-actions">
+                                <button class="btn-admin-action" onclick="editMission('${mission.id}')">Editar</button>
+                                <button class="btn-admin-action btn-delete" onclick="deleteMission('${mission.id}')">Excluir</button>
+                            </div>
+                        ` : '';
+
+                return `
+                    <div class="quest-card custom-quest-card">
+                        <div class="quest-badge ${mission.frequency}">${badgeLabel}</div>
+                        <i class="${iconClass} quest-main-icon" style="color: ${iconColor};"></i>
+                        <h3>${mission.name}</h3>
+                        <p>${mission.description}</p>
+                        <div class="quest-footer">
+                            <span class="pts-gain">+${pointValue} pts</span>
+                            <button class="btn-checkin custom-mission-btn" ${buttonDisabled} data-mission-id="${mission.id}" data-mission-name="${mission.name}" data-mission-points="${mission.points}" data-validation-type="${mission.validationType}" data-frequency="${mission.frequency}">${buttonText}</button>
+                        </div>
+                        ${adminActions}
+                    </div>
+                `;
+            })
+            .join(''));
+    };
+
+    const handleMissionSubmit = async (e) => {
+        e.preventDefault();
+        
+        const name = document.getElementById('mission-name').value;
+        const frequency = document.getElementById('mission-frequency').value;
+        const description = document.getElementById('mission-description').value;
+        const points = parseInt(document.getElementById('mission-points').value);
+        const icon = document.getElementById('mission-icon').value;
+        const color = document.getElementById('mission-color').value;
+        const validationType = document.getElementById('mission-validation-type').value;
+        const active = document.getElementById('mission-active').checked;
+
+        const newMission = {
+            id: Date.now().toString(),
+            name,
+            frequency,
+            description,
+            points,
+            icon,
+            color,
+            validationType,
+            active,
+            createdAt: new Date().toISOString()
+        };
+
+        try {
+            // Save to localStorage for now (could be Firebase later)
+            const missions = JSON.parse(localStorage.getItem('moura_leite_missions')) || [];
+            missions.push(newMission);
+            localStorage.setItem('moura_leite_missions', JSON.stringify(missions));
+
+            alert('Missão cadastrada com sucesso!');
+            
+            // Reset form
+            document.getElementById('mission-form').reset();
+            document.getElementById('mission-color').value = '#1976d2';
+            renderCustomMissions();
+        } catch (error) {
+            console.error('Erro ao cadastrar missão:', error);
+            alert('Erro ao cadastrar missão.');
+        }
+    };
+
+    window.deleteMission = (missionId) => {
+        if (!confirm('Deseja excluir esta missão permanentemente?')) return;
+        const missions = JSON.parse(localStorage.getItem('moura_leite_missions')) || [];
+        const updated = missions.filter(m => m.id !== missionId);
+        localStorage.setItem('moura_leite_missions', JSON.stringify(updated));
+        renderCustomMissions();
+        alert('Missão excluída com sucesso.');
+    };
+
+    window.editMission = (missionId) => {
+        const missions = JSON.parse(localStorage.getItem('moura_leite_missions')) || [];
+        const mission = missions.find(m => m.id === missionId);
+        if (!mission) return alert('Missão não encontrada.');
+
+        const newName = prompt('Nome da missão:', mission.name);
+        if (newName === null) return;
+        const newDescription = prompt('Descrição:', mission.description);
+        if (newDescription === null) return;
+        const newPoints = prompt('Pontos:', mission.points);
+        if (newPoints === null) return;
+        const newFrequency = prompt('Frequência (daily, weekly, monthly):', mission.frequency);
+        if (newFrequency === null) return;
+        const newValidationType = prompt('Tipo de validação (button, photo, link):', mission.validationType);
+        if (newValidationType === null) return;
+
+        mission.name = newName.trim() || mission.name;
+        mission.description = newDescription.trim() || mission.description;
+        mission.points = parseInt(newPoints) || mission.points;
+        mission.frequency = ['daily','weekly','monthly'].includes(newFrequency) ? newFrequency : mission.frequency;
+        mission.validationType = ['button','photo','link'].includes(newValidationType) ? newValidationType : mission.validationType;
+
+        localStorage.setItem('moura_leite_missions', JSON.stringify(missions));
+        renderCustomMissions();
+        alert('Missão atualizada com sucesso.');
     };
 
     window.resetUserPassword = async (email) => {
@@ -520,6 +737,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Special rendering for specific pages
             if (pageId === 'admin-users') renderAdminUsers();
+            if (pageId === 'admin-missions') renderAdminMissions();
+            if (pageId === 'missoes') renderCustomMissions();
             if (pageId === 'historico') renderHistory();
             if (pageId === 'conquistas') updateAchievements();
             if (pageId === 'ranking') renderFullRanking();
@@ -595,8 +814,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // History Rendering
     const renderHistory = () => {
-        const historyBody = document.getElementById('history-body');
-        const historyHeader = document.querySelector('.history-table thead tr');
+        const historyBody = document.querySelector('#historico-page .history-table tbody');
+        const historyHeader = document.querySelector('#historico-page .history-table thead tr');
         const isAdmin = storedUser.email === 'admin@mouraleite.com.br';
         
         const historyData = isAdmin 
@@ -780,6 +999,172 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Custom Missions Handler
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('custom-mission-btn')) {
+            const missionId = e.target.getAttribute('data-mission-id');
+            const missionName = e.target.getAttribute('data-mission-name');
+            const missionPoints = parseInt(e.target.getAttribute('data-mission-points'));
+            const validationType = e.target.getAttribute('data-validation-type');
+            const frequency = e.target.getAttribute('data-frequency');
+
+            // Get the last completion key based on frequency
+            const lastKey = frequency === 'daily' ? 'lastCustomDaily_' + missionId
+                          : frequency === 'weekly' ? 'lastCustomWeekly_' + missionId
+                          : 'lastCustomMonthly_' + missionId;
+            
+            const dateKey = frequency === 'daily' ? todayStr
+                         : frequency === 'weekly' ? currentWeek
+                         : currentMonth;
+
+            if (storedUser[lastKey] === dateKey) {
+                logMissionAttempt(storedUser.email, missionId, missionName, false, getServerTime());
+                alert('Você já completou esta missão neste período.');
+                return;
+            }
+
+            if (validationType === 'photo') {
+                const photoInput = document.createElement('input');
+                photoInput.type = 'file';
+                photoInput.accept = 'image/*';
+                photoInput.onchange = () => {
+                    const file = photoInput.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            completeMissionWithPhoto(missionId, missionName, missionPoints, reader.result, lastKey, dateKey);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+                photoInput.click();
+            } else if (validationType === 'link') {
+                const link = prompt(`Cole o link da ${missionName}:`);
+                if (link && link.trim()) {
+                    completeMissionWithLink(missionId, missionName, missionPoints, link, lastKey, dateKey);
+                }
+            } else {
+                completeMissionSimple(missionId, missionName, missionPoints, lastKey, dateKey);
+            }
+        }
+    });
+
+    const completeMissionSimple = (missionId, missionName, missionPoints, lastKey, dateKey) => {
+        const multiplier = getCurrentMultiplier();
+        const earned = Math.floor(missionPoints * multiplier);
+        const serverTimestamp = getServerTime();
+        
+        userPoints += earned;
+        storedUser.points = userPoints;
+        storedUser[lastKey] = dateKey;
+        storedUser.lastMissionTime = serverTimestamp;
+        localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        
+        // Sync with global list
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
+        if (userIndex !== -1) {
+            allUsers[userIndex].points = userPoints;
+            localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+        }
+        
+        // Log successful mission
+        logMissionAttempt(storedUser.email, missionId, missionName, true, serverTimestamp);
+        
+        updatePointsDisplay();
+        updateRanking();
+        updateUIWithUser();
+        renderCustomMissions();
+        addNotification(`${missionName} concluída! +${earned} pts.`);
+        alert(`Parabéns! Você ganhou ${earned} ponto(s) por completar: ${missionName}`);
+    };
+
+    const completeMissionWithPhoto = (missionId, missionName, missionPoints, photoData, lastKey, dateKey) => {
+        const multiplier = getCurrentMultiplier();
+        const earned = Math.floor(missionPoints * multiplier);
+        const serverTimestamp = getServerTime();
+        
+        userPoints += earned;
+        storedUser.points = userPoints;
+        storedUser[lastKey] = dateKey;
+        storedUser.lastMissionTime = serverTimestamp;
+        
+        // Record in history with photo
+        if (!storedUser.history) storedUser.history = [];
+        storedUser.history.unshift({
+            user: storedUser.username,
+            item: `Missão: ${missionName}`,
+            date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
+            time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            status: 'Validando',
+            photo: photoData,
+            serverTime: serverTimestamp
+        });
+        
+        localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        
+        // Sync with global list
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
+        if (userIndex !== -1) {
+            allUsers[userIndex].points = userPoints;
+            localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+        }
+        
+        // Log successful mission
+        logMissionAttempt(storedUser.email, missionId, missionName, true, serverTimestamp);
+        
+        updatePointsDisplay();
+        updateRanking();
+        updateUIWithUser();
+        renderCustomMissions();
+        addNotification(`${missionName} enviada para validação! +${earned} pts.`);
+        alert(`Foto enviada! Você ganhou ${earned} pontos por: ${missionName}`);
+    };
+
+    const completeMissionWithLink = (missionId, missionName, missionPoints, link, lastKey, dateKey) => {
+        const multiplier = getCurrentMultiplier();
+        const earned = Math.floor(missionPoints * multiplier);
+        const serverTimestamp = getServerTime();
+        
+        userPoints += earned;
+        storedUser.points = userPoints;
+        storedUser[lastKey] = dateKey;
+        storedUser.lastMissionTime = serverTimestamp;
+        
+        // Record in history with link
+        if (!storedUser.history) storedUser.history = [];
+        storedUser.history.unshift({
+            user: storedUser.username,
+            item: `Missão: ${missionName}`,
+            date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
+            time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            status: 'Validando',
+            link: link,
+            serverTime: serverTimestamp
+        });
+        
+        localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        
+        // Sync with global list
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
+        if (userIndex !== -1) {
+            allUsers[userIndex].points = userPoints;
+            localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+        }
+        
+        // Log successful mission
+        logMissionAttempt(storedUser.email, missionId, missionName, true, serverTimestamp);
+        
+        updatePointsDisplay();
+        updateRanking();
+        updateUIWithUser();
+        renderCustomMissions();
+        addNotification(`${missionName} enviada para validação! +${earned} pts.`);
+        alert(`Link enviado! Você ganhou ${earned} pontos por: ${missionName}`);
+    };
 
     // Weekly Lunch Logic with Photo Audit (Multi-location)
     const lunchBtns = document.querySelectorAll('#lunch-btn, #lunch-btn-full');

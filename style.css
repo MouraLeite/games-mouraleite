@@ -1271,4 +1271,175 @@ body {
 .rank-platina { background: linear-gradient(135deg, #006837 0%, #00a651 100%); color: white; }
 .rank-diamante { background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); color: white; }
 
+/* Mission Form Styles */
+.mission-form {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.mission-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.mission-form label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+}
+
+.mission-form input,
+.mission-form select,
+.mission-form textarea {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1.5px solid #eee;
+    border-radius: 8px;
+    font-family: inherit;
+    transition: var(--transition);
+    font-size: 0.9rem;
+}
+
+.mission-form input[type="color"] {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1.5px solid #eee;
+    background: transparent;
+    cursor: pointer;
+}
+
+.mission-form input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.mission-form input[type="color"]::-webkit-color-swatch {
+    border-radius: 10px;
+    border: none;
+}
+
+.mission-form input[type="color"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 104, 55, 0.1);
+}
+
+.mission-form input:focus,
+.mission-form select:focus,
+.mission-form textarea:focus {
+    border-color: var(--primary-green);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 104, 55, 0.1);
+}
+
+.mission-form textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.mission-form .form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.mission-form .form-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.icon-field-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.icon-preview-box {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+    color: var(--primary-green);
+    font-size: 1.4rem;
+}
+
+.admin-mission-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-admin-action {
+    padding: 0.55rem 0.9rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #1976d2;
+    color: white;
+    transition: var(--transition);
+}
+
+.btn-admin-action:hover {
+    transform: translateY(-1px);
+    background: #165f9e;
+}
+
+.btn-delete {
+    background: #d32f2f;
+}
+
+.btn-delete:hover {
+    background: #b22a2a;
+}
+
+.mission-form .btn-auth {
+    background: var(--primary-green);
+    color: white;
+    border: none;
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.mission-form .btn-auth:hover {
+    background: var(--primary-green-light);
+    transform: translateY(-2px);
+}
+
+.no-missions-text {
+    width: 100%;
+    text-align: center;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    border: 1px dashed #d6d6d6;
+    border-radius: 16px;
+    background: #fafafa;
+    color: #666;
+}
+
+.section-subtitle h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.25rem;
+    color: var(--text-dark);
+}
+
+.section-subtitle p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
 
