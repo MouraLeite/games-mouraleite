@@ -216,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Admin Mission Creation Logic
     const renderAdminMissions = () => {
-        const form = document.getElementById('mission-form');
         const iconSelect = document.getElementById('mission-icon');
         const iconPreview = document.getElementById('mission-icon-preview');
 
@@ -228,11 +227,27 @@ document.addEventListener('DOMContentLoaded', () => {
             iconSelect.addEventListener('change', updateIconPreview);
             updateIconPreview();
         }
+    };
 
-        if (form) {
-            form.addEventListener('submit', handleMissionSubmit);
+    // Register mission form listener once
+    const registerMissionFormListener = () => {
+        const missionForm = document.getElementById('mission-form');
+        if (missionForm && !missionForm.hasListener) {
+            console.log('Mission form found, registering submit listener');
+            missionForm.addEventListener('submit', handleMissionSubmit);
+            missionForm.hasListener = true;
+        } else if (missionForm) {
+            console.log('Mission form listener already registered');
+        } else {
+            console.warn('Mission form not found');
         }
     };
+    
+    // Try to register immediately
+    registerMissionFormListener();
+    
+    // Also try after a short delay in case DOM is still loading
+    setTimeout(registerMissionFormListener, 100);
 
     const renderCustomMissions = () => {
         const questsGrid = document.getElementById('quests-grid');
@@ -297,6 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleMissionSubmit = async (e) => {
         e.preventDefault();
         
+        console.log('Mission form submitted');
+        
         const name = document.getElementById('mission-name').value;
         const frequency = document.getElementById('mission-frequency').value;
         const description = document.getElementById('mission-description').value;
@@ -325,15 +342,17 @@ document.addEventListener('DOMContentLoaded', () => {
             missions.push(newMission);
             localStorage.setItem('moura_leite_missions', JSON.stringify(missions));
 
+            console.log('Mission saved successfully:', newMission);
             alert('Missão cadastrada com sucesso!');
             
             // Reset form
             document.getElementById('mission-form').reset();
             document.getElementById('mission-color').value = '#1976d2';
+            document.getElementById('mission-icon').value = '';
             renderCustomMissions();
         } catch (error) {
             console.error('Erro ao cadastrar missão:', error);
-            alert('Erro ao cadastrar missão.');
+            alert('Erro ao cadastrar missão: ' + error.message);
         }
     };
 
