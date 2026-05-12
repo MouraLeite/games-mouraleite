@@ -11,8 +11,10 @@ window.addEventListener('error', (event) => {
 
 // Check for Firebase availability
 console.log('Checking Firebase dependencies...');
-const firebaseAvailable = typeof firebase !== 'undefined';
-const dbAvailable = typeof db !== 'undefined';
+const firebaseAvailable = typeof window.firebase !== 'undefined';
+const dbAvailable = typeof window.db !== 'undefined';
+const dbInstance = dbAvailable ? window.db : null;
+const db = dbAvailable ? window.db : null;
 if (!firebaseAvailable) {
     console.error('Firebase SDK not loaded - check CDN connection');
 }
@@ -271,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const missionsCollection = dbAvailable ? db.collection('custom_missions') : null;
+    const missionsCollection = dbAvailable && dbInstance ? dbInstance.collection('custom_missions') : null;
     let sharedMissionCache = [];
 
     const getMissionData = () => {
@@ -408,7 +410,15 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('moura_leite_missions', JSON.stringify(missions));
 
             if (dbAvailable && missionsCollection) {
-                await missionsCollection.doc(newMission.id).set(newMission);
+                try {
+                    await missionsCollection.doc(newMission.id).set(newMission);
+                    console.log('Mission persisted to Firestore:', newMission.id);
+                } catch (firestoreError) {
+                    console.error('Firestore write failed:', firestoreError);
+                    alert('Missão salva localmente, mas não foi possível gravar no Firestore: ' + firestoreError.message);
+                }
+            } else {
+                console.warn('Firestore unavailable, mission saved only locally.');
             }
 
             console.log('Mission saved successfully:', newMission);

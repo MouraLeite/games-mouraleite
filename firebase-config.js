@@ -9,4 +9,4 @@ const firebaseConfig = {
 
 // Initialize Firebase using the compat SDK
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+window.db = firebase.firestore();
