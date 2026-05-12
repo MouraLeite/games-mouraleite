@@ -356,13 +356,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const iconClass = mission.icon ? `fa-solid ${mission.icon}` : 'fa-solid fa-bullseye';
                 const iconColor = mission.color || '#1976d2';
                 const expiresAt = mission.expiresAt ? new Date(mission.expiresAt).getTime() : null;
-                const isHot = expiresAt && expiresAt > Date.now();
-                const diff = isHot ? expiresAt - Date.now() : 0;
+                const isTimed = !!expiresAt;
+                const isExpired = isTimed && expiresAt <= Date.now();
+                const diff = isTimed && !isExpired ? expiresAt - Date.now() : 0;
                 const hours = Math.floor(diff / 3600000);
                 const minutes = Math.floor((diff % 3600000) / 60000);
                 const seconds = Math.floor((diff % 60000) / 1000);
-                const hotLabel = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-                const hotBadge = isHot ? `<div class="quest-hot-badge" data-expires="${expiresAt}"><i class="fa-solid fa-clock"></i> <span>${hotLabel}</span></div>` : '';
+                const hotLabel = isExpired ? 'Expirada' : (hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`);
+                const hotBadge = isTimed ? `<div class="quest-hot-badge" data-expires="${expiresAt}" style="${isExpired ? 'color: #999; text-decoration: line-through;' : ''}"><i class="fa-solid fa-clock"></i> <span>${hotLabel}</span></div>` : '';
                 
                 // Check if mission was already completed this period
                 const lastKey = mission.frequency === 'daily' ? 'lastCustomDaily_' + mission.id
@@ -373,7 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
                              : currentMonth;
                 
                 const isCompleted = storedUser[lastKey] === dateKey;
-                const isExpired = isHot && expiresAt <= Date.now();
                 
                 let buttonText = isCompleted ? 'Concluído' : 
                     (mission.validationType === 'photo' ? 'Enviar Foto' : 
