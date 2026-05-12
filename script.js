@@ -309,6 +309,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (missionForm && !missionForm.hasListener) {
             console.log('Mission form found, registering submit listener');
             missionForm.addEventListener('submit', handleMissionSubmit);
+            
+            // Icon & Color Real-time Preview Logic
+            const iconSelect = document.getElementById('mission-icon');
+            const colorInput = document.getElementById('mission-color');
+            const previewBox = document.getElementById('mission-icon-preview');
+            
+            const updatePreview = () => {
+                if (!previewBox) return;
+                const iconClass = iconSelect.value || 'fa-question';
+                const color = colorInput.value || '#1976d2';
+                previewBox.innerHTML = `<i class="fa-solid ${iconClass}" style="color: ${color};"></i>`;
+            };
+            
+            if (iconSelect) iconSelect.addEventListener('change', updatePreview);
+            if (colorInput) colorInput.addEventListener('input', updatePreview);
+            
             missionForm.hasListener = true;
         } else if (missionForm) {
             console.log('Mission form listener already registered');
@@ -334,9 +350,19 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(m => m.active)
             .map(mission => {
                 const badgeLabel = mission.frequency === 'daily' ? 'Diário' : mission.frequency === 'weekly' ? 'Semanal' : 'Mensal';
+                const showFrequencyBadge = !mission.surprise;
+                const surpriseBadge = mission.surprise ? `<div class="quest-surprise-badge"><span class="fire-emoji">🔥</span><span>Surpresa</span></div>` : '';
                 const pointValue = Math.floor((mission.points || 0) * multiplier);
                 const iconClass = mission.icon ? `fa-solid ${mission.icon}` : 'fa-solid fa-bullseye';
                 const iconColor = mission.color || '#1976d2';
+                const expiresAt = mission.expiresAt ? new Date(mission.expiresAt).getTime() : null;
+                const isHot = expiresAt && expiresAt > Date.now();
+                const diff = isHot ? expiresAt - Date.now() : 0;
+                const hours = Math.floor(diff / 3600000);
+                const minutes = Math.floor((diff % 3600000) / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                const hotLabel = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                const hotBadge = isHot ? `<div class="quest-hot-badge" data-expires="${expiresAt}"><i class="fa-solid fa-clock"></i> <span>${hotLabel}</span></div>` : '';
                 
                 // Check if mission was already completed this period
                 const lastKey = mission.frequency === 'daily' ? 'lastCustomDaily_' + mission.id
@@ -347,10 +373,15 @@ document.addEventListener('DOMContentLoaded', () => {
                              : currentMonth;
                 
                 const isCompleted = storedUser[lastKey] === dateKey;
-                const buttonText = isCompleted ? 'Concluído' : 
+                const isExpired = isHot && expiresAt <= Date.now();
+                
+                let buttonText = isCompleted ? 'Concluído' : 
                     (mission.validationType === 'photo' ? 'Enviar Foto' : 
                      mission.validationType === 'link' ? 'Enviar Link' : 'Validar');
-                const buttonDisabled = isCompleted ? 'disabled' : '';
+                
+                if (isExpired && !isCompleted) buttonText = 'Expirada';
+                
+                const buttonDisabled = (isCompleted || isExpired) ? 'disabled' : '';
                 const actionLabel = mission.validationType === 'photo' ? 'Enviar Foto' : mission.validationType === 'link' ? 'Enviar Link' : 'Validar';
                 
                 const adminActions = isAdmin ? `
@@ -362,7 +393,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 return `
                     <div class="quest-card custom-quest-card">
-                        <div class="quest-badge ${mission.frequency}">${badgeLabel}</div>
+                        ${hotBadge}
+                        ${surpriseBadge}
+                        ${showFrequencyBadge ? `<div class="quest-badge ${mission.frequency}">${badgeLabel}</div>` : ''}
                         <i class="${iconClass} quest-main-icon" style="color: ${iconColor};"></i>
                         <h3>${mission.name}</h3>
                         <p>${mission.description}</p>
@@ -390,6 +423,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const color = document.getElementById('mission-color').value;
         const validationType = document.getElementById('mission-validation-type').value;
         const active = document.getElementById('mission-active').checked;
+        const surprise = document.getElementById('mission-surprise').checked;
+        const durationHours = parseInt(document.getElementById('mission-duration').value, 10);
+        const expiresAt = surprise && durationHours > 0 ? new Date(Date.now() + durationHours * 3600000).toISOString() : null;
 
         const newMission = {
             id: Date.now().toString(),
@@ -401,6 +437,9 @@ document.addEventListener('DOMContentLoaded', () => {
             color,
             validationType,
             active,
+            surprise,
+            durationHours: surprise ? durationHours : null,
+            expiresAt,
             createdAt: new Date().toISOString()
         };
 
@@ -428,6 +467,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('mission-form').reset();
             document.getElementById('mission-color').value = '#1976d2';
             document.getElementById('mission-icon').value = '';
+            // Reset preview
+            const previewBox = document.getElementById('mission-icon-preview');
+            if (previewBox) previewBox.innerHTML = '<i class="fa-solid fa-question" style="color: #1976d2;"></i>';
             renderCustomMissions();
         } catch (error) {
             console.error('Erro ao cadastrar missão:', error);
@@ -1635,6 +1677,47 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(viewer);
     };
 
+    const startCountdown = () => {
+        setInterval(() => {
+            const badges = document.querySelectorAll('.quest-hot-badge');
+            badges.forEach(badge => {
+                const expiresAt = parseInt(badge.getAttribute('data-expires'));
+                const diff = expiresAt - Date.now();
+                
+                if (diff <= 0) {
+                    badge.innerHTML = '<span>Expirada</span>';
+                    badge.style.background = '#ccc';
+                    badge.style.border = '1px solid #999';
+                    
+                    // Disable the corresponding mission button
+                    const card = badge.closest('.quest-card');
+                    if (card) {
+                        const btn = card.querySelector('.custom-mission-btn');
+                        if (btn && !btn.disabled) {
+                            btn.disabled = true;
+                            btn.innerText = 'Expirada';
+                            btn.style.background = '#e0e0e0';
+                            btn.style.color = '#999';
+                        }
+                    }
+                    return;
+                }
+
+                const hours = Math.floor(diff / 3600000);
+                const minutes = Math.floor((diff % 3600000) / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                
+                let timeStr = "";
+                if (hours > 0) timeStr += `${hours}h `;
+                if (minutes > 0 || hours > 0) timeStr += `${minutes}m `;
+                timeStr += `${seconds}s`;
+                
+                const span = badge.querySelector('span');
+                if (span) span.innerText = timeStr;
+            });
+        }, 1000);
+    };
+
     saveAndSync();
     updateCheckinUI();
     updateLunchUI();
@@ -1643,4 +1726,5 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePointsDisplay();
     updateRanking();
     updateUIWithUser();
+    startCountdown();
 });

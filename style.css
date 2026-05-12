@@ -804,6 +804,93 @@ body {
 .quest-badge.weekly { background: #f3e5f5; color: #7b1fa2; }
 .quest-badge.monthly { background: #e8f5e9; color: #006837; }
 
+/* Surprise Mission Fire Badge */
+.quest-surprise-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: linear-gradient(135deg, #ff6f00 0%, #e53935 100%);
+    color: white;
+    padding: 4px 10px 4px 6px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 2;
+    box-shadow: 0 4px 14px rgba(229, 57, 53, 0.45);
+    animation: surprisePulse 2s ease-in-out infinite;
+}
+
+.quest-surprise-badge span {
+    line-height: 1;
+}
+
+.fire-emoji {
+    display: inline-block;
+    font-size: 20px;
+    line-height: 1;
+    animation: fireFlicker 0.7s ease-in-out infinite;
+    transform-origin: bottom center;
+}
+
+@keyframes fireFlicker {
+    0%   { transform: scaleY(1)    scaleX(1)    rotate(-3deg); filter: brightness(1); }
+    20%  { transform: scaleY(1.12) scaleX(0.93) rotate(2deg);  filter: brightness(1.15); }
+    40%  { transform: scaleY(0.95) scaleX(1.05) rotate(-2deg); filter: brightness(0.92); }
+    60%  { transform: scaleY(1.08) scaleX(0.96) rotate(3deg);  filter: brightness(1.1); }
+    80%  { transform: scaleY(0.98) scaleX(1.02) rotate(-1deg); filter: brightness(1); }
+    100% { transform: scaleY(1)    scaleX(1)    rotate(-3deg); filter: brightness(1); }
+}
+
+@keyframes surprisePulse {
+    0%, 100% { box-shadow: 0 4px 14px rgba(229, 57, 53, 0.45); transform: scale(1); }
+    50%       { box-shadow: 0 6px 22px rgba(255, 80, 0, 0.75);  transform: scale(1.04); }
+}
+
+.quest-hot-badge {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: transparent;
+    color: #ff3d00; /* Vibrant Alert Red-Orange */
+    padding: 0;
+    font-size: 0.9rem;
+    font-weight: 800;
+    z-index: 2;
+    white-space: nowrap;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.quest-hot-badge i {
+    font-size: 0.85rem;
+    animation: clockRotate 2s linear infinite;
+}
+
+@keyframes clockRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.quest-hot-badge span {
+    font-size: 0.78rem;
+    opacity: 0.95;
+    text-transform: none;
+}
+
+.hot-flame {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
 .quest-main-icon {
     font-size: 3rem;
     margin-bottom: 1.5rem;
