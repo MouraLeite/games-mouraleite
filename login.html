@@ -55,7 +55,13 @@
                             <span>ou</span>
                         </div>
                         <button type="button" class="btn-auth btn-outlook" id="outlook-login-btn">
-                            <i class="fa-brands fa-microsoft"></i> Entrar com Outlook
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 21 21">
+                                <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                                <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                                <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                                <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                            </svg>
+                            Entrar com Microsoft
                         </button>
                     </form>
                     <p class="toggle-text">Não tem uma conta? <a href="#" id="to-signup">Cadastre-se</a></p>
@@ -264,6 +270,16 @@
                         const result = await firebase.auth().signInWithPopup(provider);
                         const user = result.user;
                         const email = user.email;
+                        
+                        // Segurança extra: garantir que o e-mail seja da Moura Leite
+                        if (email && !email.endsWith('@mouraleite.com.br')) {
+                            alert('Acesso negado: Por favor, utilize seu e-mail corporativo da Moura Leite (@mouraleite.com.br).');
+                            await firebase.auth().signOut();
+                            outlookBtn.disabled = false;
+                            outlookBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Entrar com Microsoft';
+                            return;
+                        }
+
                         const username = user.displayName || 'Usuário Outlook';
 
                         const userRef = db.collection("users").doc(email);
@@ -282,7 +298,7 @@
                                 if (cpf === null) {
                                     alert('Cadastro cancelado. O CPF é obrigatório para o primeiro acesso.');
                                     outlookBtn.disabled = false;
-                                    outlookBtn.innerHTML = '<i class="fa-brands fa-microsoft"></i> Entrar com Outlook';
+                                    outlookBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Entrar com Microsoft';
                                     // Sign out to clean up the cancelled auth state
                                     await firebase.auth().signOut();
                                     return;
@@ -291,6 +307,7 @@
                             }
 
                             // Create new user profile
+                            const randomPassword = Math.floor(10000 + Math.random() * 90000).toString();
                             const newUser = {
                                 username: username,
                                 email: email,
@@ -299,7 +316,7 @@
                                 diretoria: 'Não informada',
                                 birth: '',
                                 admission: '',
-                                password: '',
+                                password: randomPassword,
                                 points: 0,
                                 rank: 'Iniciante',
                                 history: [],
@@ -308,7 +325,7 @@
 
                             await userRef.set(newUser);
                             localStorage.setItem('moura_leite_user', JSON.stringify(newUser));
-                            alert('Conta criada com sucesso via Outlook!');
+                            alert('Conta criada com sucesso via Microsoft!');
                             window.location.href = 'index.html';
                         }
 
@@ -317,7 +334,7 @@
                         alert('Erro ao fazer login com a Microsoft. Verifique com o administrador se a opção está ativada no painel do Firebase.');
                     } finally {
                         outlookBtn.disabled = false;
-                        outlookBtn.innerHTML = '<i class="fa-brands fa-microsoft"></i> Entrar com Outlook';
+                        outlookBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Entrar com Microsoft';
                     }
                 });
             }

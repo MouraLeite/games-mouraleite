@@ -1479,9 +1479,8 @@ body {
     gap: 10px;
 }
 
-.btn-outlook i {
-    color: #00a4ef; /* Microsoft Blue */
-    font-size: 1.2rem;
+.btn-outlook svg {
+    flex-shrink: 0;
 }
 
 .btn-outlook:hover {
