@@ -1448,6 +1448,48 @@ body {
     transform: translateY(-2px);
 }
 
+.auth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: var(--text-muted);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #eee;
+}
+
+.auth-divider span {
+    padding: 0 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.btn-outlook {
+    background: white;
+    color: #5e5e5e;
+    border: 1px solid #c8c8c8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-outlook i {
+    color: #00a4ef; /* Microsoft Blue */
+    font-size: 1.2rem;
+}
+
+.btn-outlook:hover {
+    background: #f8f8f8;
+    border-color: #a0a0a0;
+    color: #333;
+}
+
 .toggle-text {
     margin-top: 2rem;
     text-align: center;

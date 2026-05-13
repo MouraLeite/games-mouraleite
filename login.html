@@ -51,6 +51,12 @@
                             <a href="forgot-password.html" class="forgot-pass">Esqueci a senha</a>
                         </div>
                         <button type="submit" class="btn-auth">Entrar</button>
+                        <div class="auth-divider">
+                            <span>ou</span>
+                        </div>
+                        <button type="button" class="btn-auth btn-outlook" id="outlook-login-btn">
+                            <i class="fa-brands fa-microsoft"></i> Entrar com Outlook
+                        </button>
                     </form>
                     <p class="toggle-text">Não tem uma conta? <a href="#" id="to-signup">Cadastre-se</a></p>
                 </div>
@@ -70,6 +76,11 @@
                                 <label for="reg-email">E-mail</label>
                                 <input type="email" id="reg-email" placeholder="seu@email.com" required>
                             </div>
+                        </div>
+
+                        <div class="form-group" style="width: 100%;">
+                            <label for="reg-cpf">CPF</label>
+                            <input type="text" id="reg-cpf" placeholder="000.000.000-00" required>
                         </div>
 
                         <div class="form-row">
@@ -133,6 +144,7 @@
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script>
@@ -235,12 +247,84 @@
                 }
             });
 
+            // Outlook Login
+            const outlookBtn = document.getElementById('outlook-login-btn');
+            if (outlookBtn) {
+                outlookBtn.addEventListener('click', async () => {
+                    outlookBtn.disabled = true;
+                    outlookBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Conectando...';
+
+                    try {
+                        const provider = new firebase.auth.OAuthProvider('microsoft.com');
+                        
+                        const result = await firebase.auth().signInWithPopup(provider);
+                        const user = result.user;
+                        const email = user.email;
+                        const username = user.displayName || 'Usuário Outlook';
+
+                        const userRef = db.collection("users").doc(email);
+                        const userSnap = await userRef.get();
+
+                        if (userSnap.exists) {
+                            // User exists, login
+                            const userData = userSnap.data();
+                            localStorage.setItem('moura_leite_user', JSON.stringify(userData));
+                            window.location.href = 'index.html';
+                        } else {
+                            // First access via Outlook, ask for CPF
+                            let cpf = null;
+                            while (!cpf) {
+                                cpf = prompt('Para concluir seu primeiro acesso, informe seu CPF (ex: 000.000.000-00):');
+                                if (cpf === null) {
+                                    alert('Cadastro cancelado. O CPF é obrigatório para o primeiro acesso.');
+                                    outlookBtn.disabled = false;
+                                    outlookBtn.innerHTML = '<i class="fa-brands fa-microsoft"></i> Entrar com Outlook';
+                                    // Sign out to clean up the cancelled auth state
+                                    await firebase.auth().signOut();
+                                    return;
+                                }
+                                cpf = cpf.trim();
+                            }
+
+                            // Create new user profile
+                            const newUser = {
+                                username: username,
+                                email: email,
+                                cpf: cpf,
+                                dept: 'Não informado',
+                                diretoria: 'Não informada',
+                                birth: '',
+                                admission: '',
+                                password: '',
+                                points: 0,
+                                rank: 'Iniciante',
+                                history: [],
+                                notifications: []
+                            };
+
+                            await userRef.set(newUser);
+                            localStorage.setItem('moura_leite_user', JSON.stringify(newUser));
+                            alert('Conta criada com sucesso via Outlook!');
+                            window.location.href = 'index.html';
+                        }
+
+                    } catch (error) {
+                        console.error('Erro no login com Outlook:', error);
+                        alert('Erro ao fazer login com a Microsoft. Verifique com o administrador se a opção está ativada no painel do Firebase.');
+                    } finally {
+                        outlookBtn.disabled = false;
+                        outlookBtn.innerHTML = '<i class="fa-brands fa-microsoft"></i> Entrar com Outlook';
+                    }
+                });
+            }
+
             document.getElementById('signup-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const username = document.getElementById('reg-user').value;
                 const email = document.getElementById('reg-email').value;
                 const dept = document.getElementById('reg-dept').value;
                 const diretoria = document.getElementById('reg-dir').value;
+                const cpf = document.getElementById('reg-cpf').value;
                 const password = document.getElementById('reg-pass').value;
                 const submitBtn = e.target.querySelector('button[type="submit"]');
 
@@ -264,6 +348,7 @@
                         email,
                         dept,
                         diretoria,
+                        cpf,
                         birth,
                         admission,
                         password,
