@@ -631,9 +631,19 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: 'Diamante', min: 10001, next: Infinity, icon: 'fa-gem', class: 'rank-diamante', multiplier: 1.0 }
     ];
 
-    const getCurrentMultiplier = () => {
+    // ── Multiplicador Base e Boost de Pontos ────────────────────────────────────
+    const _baseMultiplier = () => {
         const currentRankObj = ranks.find((r, i) => userPoints <= r.next) || ranks[ranks.length-1];
         return currentRankObj.multiplier || 1.0;
+    };
+
+    const getCurrentMultiplier = () => {
+        const base = _baseMultiplier();
+        // Check if boost is active using server-synced time
+        if (storedUser.boostActiveUntil && getServerTime() < storedUser.boostActiveUntil) {
+            return base * 2;
+        }
+        return base;
     };
 
     // Update UI with User Data
@@ -929,11 +939,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userPoints >= price) {
             const confirmPurchase = confirm(`Deseja trocar ${price} pontos por 1x ${itemName}?`);
             if (confirmPurchase) {
+                const now = new Date(getServerTime());
                 userPoints -= price;
                 updatePointsDisplay();
-                
-                // Record history
-                const now = new Date();
+
                 const newTransaction = {
                     user: storedUser.username,
                     item: itemName,
@@ -941,30 +950,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                     status: 'Concluído'
                 };
-                
-                // User private history
+
                 if (!storedUser.history) storedUser.history = [];
                 storedUser.history.unshift(newTransaction);
 
-                // Global history (for Admin)
                 const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
                 globalHistory.unshift(newTransaction);
                 localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
 
-                // Persist changes
                 storedUser.points = userPoints;
                 localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
-                
-                // Sync with Global List
+
                 const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
                 const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
                 if (userIndex !== -1) {
                     allUsers[userIndex].points = userPoints;
                     localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
                 }
-                
-                updateRanking(); // Refresh ranking display
-                updateUIWithUser(); // Refresh banner/ranks
+
+                // Sync to Firestore
+                if (dbAvailable) {
+                    db.collection('users').doc(storedUser.email).update({ points: userPoints }).catch(e => console.error('Sync error:', e));
+                }
+
+                updateRanking();
+                updateUIWithUser();
                 addNotification(`Você resgatou: ${itemName}. Retire no RH!`);
                 alert(`Sucesso! Você adquiriu: ${itemName}. Retire seu item no RH.`);
             }
@@ -972,6 +982,122 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Pontos insuficientes! Você precisa de mais ${price - userPoints} pontos para este item.`);
         }
     };
+
+    // ── Boost de Pontos 2x ─────────────────────────────────────────────────────
+    // Uses Firebase server timestamp as single source of truth to prevent cheating.
+
+    const initBoostUI = () => {
+        const btn = document.getElementById('boost-btn');
+        if (!btn) return;
+
+        const serverNow = new Date(getServerTime());
+        const boostMonth = (serverNow.getMonth() + 1) + '-' + serverNow.getFullYear();
+
+        // Check if boost was already bought this month (stored in Firestore)
+        if (storedUser.lastBoostMonth === boostMonth) {
+            btn.disabled = true;
+            btn.textContent = 'Usado ✓';
+            return;
+        }
+
+        // Check if boost is currently active
+        if (storedUser.boostActiveUntil && getServerTime() < storedUser.boostActiveUntil) {
+            btn.disabled = true;
+            const remaining = Math.ceil((storedUser.boostActiveUntil - getServerTime()) / 3600000);
+            btn.textContent = `Ativo (${remaining}h)`;
+        }
+    };
+
+    window.buyBoost = async function() {
+        const price = 50;
+        if (userPoints < price) {
+            alert(`Pontos insuficientes! Você precisa de mais ${price - userPoints} pontos.`);
+            return;
+        }
+
+        // Validate via Firestore server timestamp (anti-cheat)
+        if (!dbAvailable) {
+            alert('É necessário conexão com o servidor para ativar o Boost. Tente novamente.');
+            return;
+        }
+
+        try {
+            // Get current server time from Firestore
+            const serverTsDoc = await db.collection('_server_time').doc('sync').get();
+            let serverNow;
+            if (serverTsDoc.exists && serverTsDoc.data().timestamp) {
+                serverNow = serverTsDoc.data().timestamp.toDate();
+            } else {
+                // Write server timestamp and read back
+                await db.collection('_server_time').doc('sync').set({
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                const fresh = await db.collection('_server_time').doc('sync').get();
+                serverNow = fresh.data().timestamp.toDate();
+            }
+
+            const boostMonth = (serverNow.getMonth() + 1) + '-' + serverNow.getFullYear();
+            const userDoc = await db.collection('users').doc(storedUser.email).get();
+            const userData = userDoc.data() || {};
+
+            // Check monthly limit in Firestore (not localStorage, to prevent manipulation)
+            if (userData.lastBoostMonth === boostMonth) {
+                alert('Você já usou o Boost este mês. Disponível novamente no próximo mês.');
+                const btn = document.getElementById('boost-btn');
+                if (btn) { btn.disabled = true; btn.textContent = 'Usado ✓'; }
+                return;
+            }
+
+            const confirmed = confirm(`Deseja ativar o Boost 2x por ${price} pontos?\nSeus pontos em missões serão dobrados por 24 horas.`);
+            if (!confirmed) return;
+
+            // Calculate boost expiry: 24h from server time
+            const boostUntilTs = serverNow.getTime() + 86400000; // +24h
+
+            userPoints -= price;
+            storedUser.points = userPoints;
+            storedUser.lastBoostMonth = boostMonth;
+            storedUser.boostActiveUntil = boostUntilTs;
+
+            const now = new Date(serverNow);
+            const transaction = {
+                user: storedUser.username,
+                item: 'Boost de Pontos 2x (24h)',
+                date: now.toLocaleDateString('pt-BR'),
+                time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                status: 'Ativo'
+            };
+            if (!storedUser.history) storedUser.history = [];
+            storedUser.history.unshift(transaction);
+
+            const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
+            globalHistory.unshift(transaction);
+            localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+            localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+
+            // Persist to Firestore (authoritative record)
+            await db.collection('users').doc(storedUser.email).update({
+                points: userPoints,
+                lastBoostMonth: boostMonth,
+                boostActiveUntil: boostUntilTs
+            });
+
+            updatePointsDisplay();
+            updateRanking();
+            updateUIWithUser();
+            initBoostUI();
+            addNotification('🚀 Boost 2x ativado! Suas missões valem o dobro por 24h.');
+            alert('🚀 Boost ativado! Suas missões valem 2x por 24 horas. Bora completar missões!');
+
+        } catch (err) {
+            console.error('Boost error:', err);
+            alert('Erro ao ativar o Boost. Tente novamente.');
+        }
+    };
+
+    // Removed duplicate multiplier logic here
+
+    initBoostUI();
 
     // History Rendering
     const renderHistory = () => {
