@@ -256,6 +256,10 @@
 
                     try {
                         const provider = new firebase.auth.OAuthProvider('microsoft.com');
+                        provider.setCustomParameters({
+                            // ID do Diretório (locatário) da Moura Leite
+                            tenant: '34bf99e3-12de-4814-ab19-0d0f90fab15b'
+                        });
                         
                         const result = await firebase.auth().signInWithPopup(provider);
                         const user = result.user;
