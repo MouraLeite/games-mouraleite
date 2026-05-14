@@ -17,13 +17,6 @@
 
 <body>
     <script>
-        // Force Logout Logic (to refresh sessions)
-        const AUTH_VERSION = '1.1';
-        if (localStorage.getItem('moura_leite_auth_version') !== AUTH_VERSION) {
-            localStorage.removeItem('moura_leite_user');
-            localStorage.setItem('moura_leite_auth_version', AUTH_VERSION);
-        }
-
         // Auth Guard: Redirect to login if no user is found
         if (!localStorage.getItem('moura_leite_user')) {
             window.location.href = 'login.html';
@@ -409,6 +402,14 @@
                                 <!-- Users will be injected here -->
                             </tbody>
                         </table>
+                    </div>
+
+                    <div class="admin-actions-card glass-card" style="margin-top: 20px; padding: 20px; text-align: center;">
+                        <h3>🛠️ Ferramentas de Auditoria</h3>
+                        <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Use esta ferramenta se os pontos dos colaboradores estiverem incorretos ou não sincronizados.</p>
+                        <button onclick="reconcileAllUsersPoints()" class="btn-buy" style="background: #e67e22; padding: 12px 24px;">
+                            <i class="fa-solid fa-sync"></i> Recalcular e Corrigir Pontos de Todos
+                        </button>
                     </div>
                 </section>
 
