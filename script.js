@@ -1507,6 +1507,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const healUserPoints = () => {
+        try {
+            if (userPoints > 0) return; // Only attempt recovery if current points are 0
+            if (!storedUser.history || storedUser.history.length === 0) return;
+
+            console.log("🩹 Auditoria: Detectado usuário com 0 pontos mas com histórico. Iniciando recuperação...");
+            let recoveredPoints = 0;
+            
+            // Map of system missions and their point values
+            const missionPointsMap = {
+                'Check-in Diário': 1,
+                'Integração entre Times': 5,
+                'Reunião de Integração': 8,
+                'Embaixador Digital': 15,
+                'Engajamento Viva Engage': 12,
+                'Dinâmica de Jogos': 20
+            };
+
+            storedUser.history.forEach(tx => {
+                // 1. Try to parse points from the new detailed format "(+X pts)"
+                const gainedMatch = tx.item.match(/\(\+(\d+)\s*pts\)/);
+                if (gainedMatch) {
+                    recoveredPoints += parseInt(gainedMatch[1]);
+                } else {
+                    // 2. Fallback to mission name mapping for older history entries
+                    for (const [name, pts] of Object.entries(missionPointsMap)) {
+                        if (tx.item.includes(name)) {
+                            recoveredPoints += pts;
+                            break;
+                        }
+                    }
+                }
+
+                // 3. Subtract spent points if any purchases were made
+                const spentMatch = tx.item.match(/\(-(\d+)\s*pts\)/);
+                if (spentMatch) {
+                    recoveredPoints -= parseInt(spentMatch[1]);
+                }
+            });
+
+            if (recoveredPoints > 0) {
+                console.log(`✅ Sucesso! Foram recuperados ${recoveredPoints} pontos do histórico.`);
+                userPoints = recoveredPoints;
+                storedUser.points = userPoints;
+                saveAndSync();
+                updatePointsDisplay();
+                updateRanking();
+            }
+        } catch (e) {
+            console.error("Erro na recuperação de pontos:", e);
+        }
+    };
+
     const checkinBtns = document.querySelectorAll('#checkin-btn, #checkin-btn-full');
     const checkinStatus = document.getElementById('checkin-status');
 
@@ -1845,6 +1898,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     saveAndSync();
+    healUserPoints();
     updateCheckinUI();
     updatePointsDisplay();
     updateRanking();
