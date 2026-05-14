@@ -192,25 +192,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (storedUser && storedUser.email) {
                 const currentUserInDb = usersArray.find(u => u.email === storedUser.email);
                 if (currentUserInDb) {
-                    // If local points are higher than server points, force a push to server
-                    if (userPoints > (currentUserInDb.points || 0)) {
-                        console.log(`⚡ Discrepância detectada para ${storedUser.email}: Local(${userPoints}) > Server(${currentUserInDb.points || 0}). Forçando sincronização...`);
-                        saveAndSync();
-                    } 
-                    // If server points are higher (e.g. admin edit), update local
-                    else if ((currentUserInDb.points || 0) > userPoints) {
-                        userPoints = currentUserInDb.points;
+                    // EMERGENCY SYNC: Trust the server as the source of truth
+                    if (userPoints !== (currentUserInDb.points || 0)) {
+                        console.log(`🔄 Sincronizando pontos com o servidor para ${storedUser.email}: ${userPoints} -> ${currentUserInDb.points || 0}`);
+                        
+                        // Update local variables to match server
+                        userPoints = currentUserInDb.points || 0;
                         storedUser.points = userPoints;
                         localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+                        
                         updatePointsDisplay();
-                        console.log(`📥 Pontos atualizados do servidor para ${storedUser.email}: ${userPoints} pts.`);
                     }
                 }
             }
             
             // Re-render UI components that depend on global data
-            if (typeof updateRanking === 'function') updateRanking();
-            if (typeof renderAdminUsers === 'function') renderAdminUsers();
+            if (typeof updateRanking === 'function') updateRanking(usersArray);
+            if (typeof renderAdminUsers === 'function') renderAdminUsers(usersArray);
         });
     } else {
         console.warn('Skipping Firestore user sync because db is unavailable.');
@@ -256,6 +254,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const isAdmin = storedUser.email === 'admin@mouraleite.com.br';
+    
+    // Show Admin UI elements
+    if (isAdmin) {
+        const adminItem = document.getElementById('admin-menu-item');
+        const adminMissionsItem = document.getElementById('admin-missions-menu-item');
+        const emergencyTools = document.getElementById('admin-emergency-tools');
+        if (adminItem) adminItem.classList.remove('hidden');
+        if (adminMissionsItem) adminMissionsItem.classList.remove('hidden');
+        if (emergencyTools) emergencyTools.classList.remove('hidden');
+    }
     const adminMenuItem = document.getElementById('admin-menu-item');
     const adminMissionsMenuItem = document.getElementById('admin-missions-menu-item');
     if (isAdmin && adminMenuItem) {
@@ -316,6 +324,28 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Admin Mission Creation Logic
+    window.editUserPoints = async (email, currentPoints) => {
+        const newPoints = prompt(`Editar pontos de ${email}:\nValor atual: ${currentPoints}`, currentPoints);
+        if (newPoints !== null && !isNaN(newPoints)) {
+            try {
+                const pts = parseInt(newPoints);
+                await db.collection("users").doc(email).update({ points: pts });
+                alert("Pontos atualizados com sucesso!");
+                // Sincronizar localmente se for o próprio admin
+                if (storedUser.email === email) {
+                    userPoints = pts;
+                    storedUser.points = pts;
+                    localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+                }
+                updateRanking();
+                renderAdminUsers();
+            } catch (error) {
+                console.error("Erro ao atualizar pontos:", error);
+                alert("Erro ao salvar no banco de dados.");
+            }
+        }
+    };
+
     const renderAdminMissions = () => {
         const iconSelect = document.getElementById('mission-icon');
         const iconPreview = document.getElementById('mission-icon-preview');
@@ -1000,17 +1030,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Update Ranking with All Users (excluding admin)
-    const updateRanking = () => {
+    const updateRanking = (providedUsers = null) => {
         const rankingContainer = document.querySelector('.ranking-list');
         if (!rankingContainer) return;
 
-        // Get all users from global list
-        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        // Use provided users from snapshot or fallback to local
+        const allUsers = providedUsers || JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
         
-        // Filter out admin and sort by points
+        // Filter out admin and sort by points strictly from server data
         const sortedUsers = allUsers
             .filter(u => u.email !== 'admin@mouraleite.com.br')
-            .sort((a, b) => b.points - a.points);
+            .sort((a, b) => (b.points || 0) - (a.points || 0));
 
         if (sortedUsers.length === 0) {
             rankingContainer.innerHTML = '<p style="padding:1rem; color:#999; text-align:center;">Nenhum usuário no ranking.</p>';
@@ -1018,11 +1048,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         rankingContainer.innerHTML = sortedUsers.map((user, index) => {
-            const isMe = user.email === storedUser.email;
+            const isMe = user.email === (storedUser ? storedUser.email : '');
             const rankClass = index === 0 ? 'first' : (isMe ? 'me' : '');
-            
-            // Use local points for "me" to ensure immediate feedback
-            const pointsValue = isMe ? Math.max(user.points, userPoints) : user.points;
+            const pointsValue = user.points || 0;
             
             return `
                 <div class="rank-item ${rankClass}">
@@ -1534,19 +1562,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global Audit Tool for Admin (Run via console)
     window.recalcularTodosOsPontos = async () => {
-        if (!confirm("⚠️ ATENÇÃO: Isso irá recalcular os pontos de TODOS os usuários baseando-se no histórico e nos LOGS DE SISTEMA. Deseja continuar?")) return;
+        if (!confirm("⚠️ ATENÇÃO: Isso irá recalcular os pontos de TODOS os usuários cadastrados baseando-se no histórico, missões customizadas e logs. Deseja continuar?")) return;
         
-        console.log("🚀 Iniciando auditoria global avançada...");
+        console.log("🚀 Iniciando auditoria global super-robusta...");
         try {
-            const snapshot = await db.collection("users").get();
+            const usersSnapshot = await db.collection("users").get();
             const logsSnapshot = await db.collection("mission_logs").get();
+            const missionsSnapshot = await db.collection("missions").get();
             
-            // Map logs by user
-            const allLogs = [];
-            logsSnapshot.forEach(doc => allLogs.push(doc.data()));
-
-            let updatedCount = 0;
-
+            // Build a dynamic map of all missions (system + custom)
             const missionPointsMap = {
                 'Check-in Diário': 1,
                 'Integração entre Times': 5,
@@ -1555,49 +1579,75 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Engajamento Viva Engage': 12,
                 'Dinâmica de Jogos': 20
             };
+            
+            missionsSnapshot.forEach(doc => {
+                const m = doc.data();
+                if (m.name && m.points) {
+                    missionPointsMap[m.name] = parseInt(m.points);
+                }
+            });
+            
+            const allLogs = [];
+            logsSnapshot.forEach(doc => allLogs.push(doc.data()));
 
-            for (const doc of snapshot.docs) {
+            let updatedCount = 0;
+
+            for (const doc of usersSnapshot.docs) {
                 const user = doc.data();
+                const userId = doc.id; // Source of truth for document updates
                 const history = user.history || [];
-                const userLogs = allLogs.filter(l => l.userId === user.email && l.success);
+                const userLogs = allLogs.filter(l => (l.userId === userId || (user.email && l.userId === user.email.toLowerCase())) && l.success);
                 
                 let calculatedPoints = 0;
                 let processedMissions = new Set();
 
-                // 1. Analyze user history
                 history.forEach(tx => {
                     const gainedMatch = tx.item.match(/\(\+(\d+)\s*pts\)/);
+                    let missionName = null;
+                    let pts = 0;
+
                     if (gainedMatch) {
-                        calculatedPoints += parseInt(gainedMatch[1]);
+                        pts = parseInt(gainedMatch[1]);
+                        missionName = tx.item.split('(+')[0].replace('Missão: ', '').trim();
                     } else {
-                        for (const [name, pts] of Object.entries(missionPointsMap)) {
+                        for (const [name, p] of Object.entries(missionPointsMap)) {
                             if (tx.item.includes(name)) {
-                                calculatedPoints += pts;
-                                processedMissions.add(name);
+                                missionName = name;
+                                pts = p;
                                 break;
                             }
                         }
                     }
+
+                    if (missionName && pts > 0) {
+                        // Use a composite key to avoid double counting same mission on same date
+                        const dateKey = tx.date || 'unknown';
+                        const uniqueKey = `${missionName}_${dateKey}`;
+                        
+                        if (!processedMissions.has(uniqueKey)) {
+                            calculatedPoints += pts;
+                            processedMissions.add(uniqueKey);
+                        }
+                    }
+
                     const spentMatch = tx.item.match(/\(-(\d+)\s*pts\)/);
                     if (spentMatch) calculatedPoints -= parseInt(spentMatch[1]);
                 });
 
-                // 2. RECOVERY: Check mission_logs for missions NOT in history
+                // 2. Recovery from logs
                 userLogs.forEach(log => {
                     const missionName = log.missionName;
                     const pts = missionPointsMap[missionName] || 0;
-                    
-                    // Simple heuristic: if mission is in logs but not explicitly in history, count it
                     if (pts > 0 && !processedMissions.has(missionName)) {
-                        console.log(`🔎 Recuperado dos logs para ${user.username}: ${missionName} (+${pts} pts)`);
+                        console.log(`🔎 [LOG RECOVERY] p/ ${user.username || userId}: ${missionName} (+${pts} pts)`);
                         calculatedPoints += pts;
                         processedMissions.add(missionName); 
                     }
                 });
 
-                if (calculatedPoints !== user.points) {
-                    console.log(`👤 ${user.username}: ${user.points} -> ${calculatedPoints}`);
-                    await db.collection("users").doc(user.email).update({ points: calculatedPoints });
+                if (calculatedPoints !== (user.points || 0)) {
+                    console.log(`👤 Corrigindo ${user.username || userId}: ${user.points || 0} -> ${calculatedPoints}`);
+                    await db.collection("users").doc(userId).update({ points: calculatedPoints });
                     updatedCount++;
                 }
             }
@@ -1606,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         } catch (error) {
             console.error("Erro na auditoria:", error);
-            alert("Erro ao realizar auditoria.");
+            alert("Erro ao realizar auditoria. Verifique o console.");
         }
     };
 
