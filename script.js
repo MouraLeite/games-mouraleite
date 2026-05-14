@@ -982,12 +982,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const isMe = user.email === storedUser.email;
             const rankClass = index === 0 ? 'first' : (isMe ? 'me' : '');
             
+            // Use local points for "me" to ensure immediate feedback
+            const pointsValue = isMe ? Math.max(user.points, userPoints) : user.points;
+            
             return `
                 <div class="rank-item ${rankClass}">
                     <span class="pos">${index + 1}</span>
                     <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=${index === 0 ? 'F1863B' : '006837'}&color=fff" alt="">
                     <span class="name">${isMe ? 'Você' : user.username}</span>
-                    <span class="pts">${user.points.toLocaleString()} pts</span>
+                    <span class="pts">${pointsValue.toLocaleString()} pts</span>
                 </div>
             `;
         }).join('');
@@ -1496,6 +1499,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 userPoints += earned;
                 storedUser.points = userPoints;
                 storedUser.lastCheckIn = todayStr;
+                // Keep custom mission key in sync
+                storedUser['lastCustomDaily_sys_checkin'] = todayStr;
+                
                 saveAndSync();
                 updatePointsDisplay();
                 updateRanking();
@@ -1575,10 +1581,29 @@ document.addEventListener('DOMContentLoaded', () => {
         userPoints += earned;
         storedUser.points = userPoints;
         storedUser[lastKey] = dateKey;
-        if (missionId === 'sys_lunch') storedUser.lunchCount = (storedUser.lunchCount || 0) + 1;
-        if (missionId === 'sys_reuniao') storedUser.reuniaoCount = (storedUser.reuniaoCount || 0) + 1;
-        if (missionId === 'sys_embaixador') storedUser.linkedInCount = (storedUser.linkedInCount || 0) + 1;
-        if (missionId === 'sys_vivaengage') storedUser.vivaEngageCount = (storedUser.vivaEngageCount || 0) + 1;
+        
+        // Ensure system keys are updated if mission is a system mission
+        if (missionId === 'sys_checkin') storedUser.lastCheckIn = todayStr;
+        if (missionId === 'sys_lunch') {
+            storedUser.lastLunchWeek = currentWeek;
+            storedUser.lunchCount = (storedUser.lunchCount || 0) + 1;
+        }
+        if (missionId === 'sys_reuniao') {
+            storedUser.lastReuniaoWeek = currentWeek;
+            storedUser.reuniaoCount = (storedUser.reuniaoCount || 0) + 1;
+        }
+        if (missionId === 'sys_embaixador') {
+            storedUser.lastLinkedInMonth = currentMonth;
+            storedUser.linkedInCount = (storedUser.linkedInCount || 0) + 1;
+        }
+        if (missionId === 'sys_vivaengage') {
+            storedUser.lastVivaEngageMonth = currentMonth;
+            storedUser.vivaEngageCount = (storedUser.vivaEngageCount || 0) + 1;
+        }
+        if (missionId === 'sys_jogos') {
+            storedUser.lastGamesWeek = currentWeek;
+            storedUser.gamesCount = (storedUser.gamesCount || 0) + 1;
+        }
         
         const transaction = {
             user: storedUser.username,
@@ -1622,6 +1647,20 @@ document.addEventListener('DOMContentLoaded', () => {
         storedUser.points = userPoints;
         storedUser[lastKey] = dateKey;
         storedUser.lastMissionTime = serverTimestamp;
+
+        // Ensure system keys are updated if mission is a system mission
+        if (missionId === 'sys_lunch') {
+            storedUser.lastLunchWeek = currentWeek;
+            storedUser.lunchCount = (storedUser.lunchCount || 0) + 1;
+        }
+        if (missionId === 'sys_reuniao') {
+            storedUser.lastReuniaoWeek = currentWeek;
+            storedUser.reuniaoCount = (storedUser.reuniaoCount || 0) + 1;
+        }
+        if (missionId === 'sys_jogos') {
+            storedUser.lastGamesWeek = currentWeek;
+            storedUser.gamesCount = (storedUser.gamesCount || 0) + 1;
+        }
         
         const transaction = {
             user: storedUser.username,
@@ -1674,6 +1713,16 @@ document.addEventListener('DOMContentLoaded', () => {
         storedUser.points = userPoints;
         storedUser[lastKey] = dateKey;
         storedUser.lastMissionTime = serverTimestamp;
+
+        // Ensure system keys are updated if mission is a system mission
+        if (missionId === 'sys_embaixador') {
+            storedUser.lastLinkedInMonth = currentMonth;
+            storedUser.linkedInCount = (storedUser.linkedInCount || 0) + 1;
+        }
+        if (missionId === 'sys_vivaengage') {
+            storedUser.lastVivaEngageMonth = currentMonth;
+            storedUser.vivaEngageCount = (storedUser.vivaEngageCount || 0) + 1;
+        }
         
         const transaction = {
             user: storedUser.username,
