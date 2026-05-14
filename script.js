@@ -1507,6 +1507,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Global Audit Tool for Admin (Run via console)
+    window.recalcularTodosOsPontos = async () => {
+        if (!confirm("⚠️ ATENÇÃO: Isso irá recalcular os pontos de TODOS os usuários cadastrados baseando-se no histórico de missões e compras. Deseja continuar?")) return;
+        
+        console.log("🚀 Iniciando auditoria global de pontos...");
+        try {
+            const snapshot = await db.collection("users").get();
+            let updatedCount = 0;
+
+            const missionPointsMap = {
+                'Check-in Diário': 1,
+                'Integração entre Times': 5,
+                'Reunião de Integração': 8,
+                'Embaixador Digital': 15,
+                'Engajamento Viva Engage': 12,
+                'Dinâmica de Jogos': 20
+            };
+
+            for (const doc of snapshot.docs) {
+                const user = doc.data();
+                const history = user.history || [];
+                let calculatedPoints = 0;
+
+                history.forEach(tx => {
+                    // 1. Try to parse points from detailed format (+X pts)
+                    const gainedMatch = tx.item.match(/\(\+(\d+)\s*pts\)/);
+                    if (gainedMatch) {
+                        calculatedPoints += parseInt(gainedMatch[1]);
+                    } else {
+                        // 2. Fallback to name mapping
+                        for (const [name, pts] of Object.entries(missionPointsMap)) {
+                            if (tx.item.includes(name)) {
+                                calculatedPoints += pts;
+                                break;
+                            }
+                        }
+                    }
+                    // 3. Subtract spent points
+                    const spentMatch = tx.item.match(/\(-(\d+)\s*pts\)/);
+                    if (spentMatch) {
+                        calculatedPoints -= parseInt(spentMatch[1]);
+                    }
+                });
+
+                // If calculated points differ from current points, update Firebase
+                if (calculatedPoints !== user.points) {
+                    console.log(`👤 Usuário: ${user.username} | Banco: ${user.points} -> Calculado: ${calculatedPoints}`);
+                    await db.collection("users").doc(user.email).update({ points: calculatedPoints });
+                    updatedCount++;
+                }
+            }
+            
+            alert(`✅ Auditoria finalizada! ${updatedCount} usuários tiveram seus pontos corrigidos.`);
+            window.location.reload();
+        } catch (error) {
+            console.error("Erro na auditoria:", error);
+            alert("Erro ao realizar auditoria. Verifique o console.");
+        }
+    };
+
     const healUserPoints = () => {
         try {
             if (userPoints > 0) return; // Only attempt recovery if current points are 0
