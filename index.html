@@ -172,39 +172,8 @@
                                 <h3>Missões de Integração</h3>
                                 <a href="#" onclick="showPage('missoes')">Ver todas</a>
                             </div>
-                            <div class="mission-list">
-                                <div class="mission-item daily-checkin">
-                                    <div class="mission-icon checkin"><i class="fa-solid fa-calendar-check"></i></div>
-                                    <div class="mission-details">
-                                        <h4>Check-in Diário</h4>
-                                        <p id="checkin-status">Garanta seu ponto de hoje!</p>
-                                    </div>
-                                    <button class="btn-checkin" id="checkin-btn">+1 pts</button>
-                                </div>
-                                <div class="mission-item weekly-lunch">
-                                    <div class="mission-icon lunch"><i class="fa-solid fa-people-arrows"></i></div>
-                                    <div class="mission-details">
-                                        <h4>Integração entre Times</h4>
-                                        <p id="lunch-status">Você + 2 pessoas de depto. diferentes.</p>
-                                    </div>
-                                    <button class="btn-checkin" id="lunch-btn">+5 pts</button>
-                                </div>
-                                <div class="mission-item">
-                                    <div class="mission-icon social"><i class="fa-brands fa-linkedin"></i></div>
-                                    <div class="mission-details">
-                                        <h4>Embaixador Digital</h4>
-                                        <p>Publique uma notícia</p>
-                                    </div>
-                                    <button class="btn-checkin" id="embaixador-btn">+15 pts</button>
-                                </div>
-                                <div class="mission-item">
-                                    <div class="mission-icon team"><i class="fa-solid fa-people-group"></i></div>
-                                    <div class="mission-details">
-                                        <h4>Dinâmica de Jogos</h4>
-                                        <p>Agende com o RH</p>
-                                    </div>
-                                    <button class="btn-checkin" id="jogos-btn">+20 pts</button>
-                                </div>
+                            <div class="mission-list" id="dashboard-missions-list">
+                                <p style="padding:1rem; color:#999; text-align:center;">Carregando missões...</p>
                             </div>
                         </div>
 
@@ -262,66 +231,7 @@
                         <p>Complete tarefas para ganhar pontos e fortalecer a equipe.</p>
                     </div>
                     <div class="quests-grid" id="quests-grid">
-                        <div class="quest-card">
-                            <div class="quest-badge daily">Diário</div>
-                            <i class="fa-solid fa-calendar-check quest-main-icon" style="color: #1976d2;"></i>
-                            <h3>Check-in Diário</h3>
-                            <p>Garanta seu ponto diário apenas acessando o portal.</p>
-                            <div class="quest-footer">
-                                <span class="pts-gain">+1 pts</span>
-                                <button class="btn-checkin" id="checkin-btn-full">Check-in</button>
-                            </div>
-                        </div>
-                        <div class="quest-card">
-                            <div class="quest-badge weekly">Semanal</div>
-                            <i class="fa-solid fa-people-arrows quest-main-icon" style="color: #f57c00;"></i>
-                            <h3>Integração entre Times</h3>
-                            <p>Almoço com você + 2 pessoas de departamentos diferentes.</p>
-                            <div class="quest-footer">
-                                <span class="pts-gain">+5 pts</span>
-                                <button class="btn-checkin" id="lunch-btn-full">Validar Foto</button>
-                            </div>
-                        </div>
-                        <div class="quest-card">
-                            <div class="quest-badge weekly">Semanal</div>
-                            <i class="fa-solid fa-handshake quest-main-icon" style="color: #4caf50;"></i>
-                            <h3>Reunião de Integração</h3>
-                            <p>Participe de um encontro com colegas de outro setor.</p>
-                            <div class="quest-footer">
-                                <span class="pts-gain">+8 pts</span>
-                                <button class="btn-checkin" id="reuniao-btn-full">Validar Foto</button>
-                            </div>
-                        </div>
-                        <div class="quest-card">
-                            <div class="quest-badge monthly">Mensal</div>
-                            <i class="fa-brands fa-linkedin quest-main-icon" style="color: #0077b5;"></i>
-                            <h3>Embaixador Digital</h3>
-                            <p>Compartilhe o novo lançamento da Moura Leite no seu LinkedIn pessoal.</p>
-                            <div class="quest-footer">
-                                <span class="pts-gain">+15 pts</span>
-                                <button class="btn-checkin" id="embaixador-btn-full">Enviar Link</button>
-                            </div>
-                        </div>
-                        <div class="quest-card">
-                            <div class="quest-badge monthly">Mensal</div>
-                            <i class="fa-solid fa-share-nodes quest-main-icon" style="color: #7b2cbf;"></i>
-                            <h3>Engajamento Viva Engage</h3>
-                            <p>Faça uma postagem no Viva Engage da empresa.</p>
-                            <div class="quest-footer">
-                                <span class="pts-gain">+12 pts</span>
-                                <button class="btn-checkin" id="vivaengage-btn-full">Enviar Link</button>
-                            </div>
-                        </div>
-                        <div class="quest-card">
-                            <div class="quest-badge weekly">Semanal</div>
-                            <i class="fa-solid fa-people-group quest-main-icon" style="color: #F1863B;"></i>
-                            <h3>Dinâmica de Jogos</h3>
-                            <p>Participe da dinâmica de interação dos nossos jogos de tabuleiro durante a semana. Procure o Alex ou a Mariana do RH para alinhar o dia e horário.</p>
-                            <div class="quest-footer">
-                                <span class="pts-gain">+20 pts</span>
-                                <button class="btn-checkin" id="jogos-btn-full">Confirmar</button>
-                            </div>
-                        </div>
+                        <p style="padding:1rem; color:#999; text-align:center; grid-column: 1 / -1;">Carregando missões...</p>
                     </div>
                 </section>
 
@@ -433,7 +343,7 @@
                             <div class="lock-overlay"><i class="fa-solid fa-lock"></i></div>
                         </div>
                         <div class="achievement-card locked">
-                            <div class="medal-icon"><i class="fa-solid fa-bullhorn"></i></div>
+                            <div class="medal-icon"><i class="fa-brands fa-linkedin"></i></div>
                             <div class="achievement-info">
                                 <h3>Porta Voz Moura Leite</h3>
                                 <p>Conclua o Embaixador Digital 10 vezes.</p>
@@ -535,7 +445,7 @@
                                             <option value="fa-calendar-check">Calendário</option>
                                             <option value="fa-people-arrows">Integração</option>
                                             <option value="fa-handshake">Reunião</option>
-                                            <option value="fa-linkedin">LinkedIn</option>
+                                            <option value="fa-brands fa-linkedin">LinkedIn</option>
                                             <option value="fa-share-nodes">Compartilhamento</option>
                                             <option value="fa-award">Conquista</option>
                                             <option value="fa-bell">Notificação</option>
@@ -579,7 +489,32 @@
                                 </div>
                             </div>
                             <button type="submit" class="btn-auth">Cadastrar Missão</button>
+                            <button type="button" class="btn-secondary hidden" id="cancel-edit-mission-btn" style="margin-top: 10px; width: 100%;">Cancelar Edição</button>
                         </form>
+                    </div>
+
+                    <div class="section-title" style="margin-top: 3rem;">
+                        <h2>Missões Cadastradas</h2>
+                        <p>Gerencie as missões que já foram criadas.</p>
+                    </div>
+                    <div class="glass-card">
+                        <table class="history-table" style="width:100%;">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Frequência</th>
+                                    <th>Pontos</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-missions-list-body">
+                                <!-- Missions injected here -->
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 2rem; color: #999;">Carregando missões...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </section>
             </div>
@@ -642,6 +577,63 @@
                     <p><strong>Bônus:</strong> Missões e prêmios exclusivos.</p>
                 </div>
             </div>
+        </div>
+    </div>
+    <!-- User Edit Modal -->
+    <div id="edit-user-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-modal" id="close-edit-user">&times;</span>
+            <div class="section-title">
+                <h2>Editar Usuário</h2>
+                <p id="edit-user-email-label" style="font-size: 0.8rem; color: #999;"></p>
+            </div>
+            <form id="edit-user-form" class="mission-form">
+                <input type="hidden" id="edit-user-email">
+                <div class="form-group">
+                    <label for="edit-user-name">Nome Completo</label>
+                    <input type="text" id="edit-user-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-user-points">Pontos</label>
+                    <input type="number" id="edit-user-points" required min="0">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-user-dept">Departamento</label>
+                        <select id="edit-user-dept" required>
+                            <option value="obras">Obras</option>
+                            <option value="pessoas">Pessoas</option>
+                            <option value="relacionamento">Relacionamento</option>
+                            <option value="servicos">Serviços</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="secretaria-vendas">Secretaria de Vendas</option>
+                            <option value="projetos">Projetos</option>
+                            <option value="pdv-tatui">PDV Tatuí</option>
+                            <option value="controladoria">Controladoria</option>
+                            <option value="tesouraria">Tesouraria</option>
+                            <option value="suprimentos">Suprimentos</option>
+                            <option value="comercial">Comercial</option>
+                            <option value="cobranca">Cobrança</option>
+                            <option value="pdv-avare">PDV Avaré</option>
+                            <option value="sdr">SDR</option>
+                            <option value="engenharia">Engenharia</option>
+                            <option value="novos-negocios">Novos Negócios</option>
+                            <option value="Tecnologia">Tecnologia</option>
+                            <option value="RH">RH</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-user-dir">Diretoria</label>
+                        <select id="edit-user-dir" required>
+                            <option value="engenharia">Engenharia</option>
+                            <option value="financeira">Financeira</option>
+                            <option value="comercial">Comercial</option>
+                            <option value="projetos">Projetos</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-auth">Salvar Alterações</button>
+            </form>
         </div>
     </div>
 </body>

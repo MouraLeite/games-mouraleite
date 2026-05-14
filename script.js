@@ -258,6 +258,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     };
 
+    const getIconClass = (iconName) => {
+        if (!iconName) return 'fa-solid fa-bullseye';
+        if (iconName.startsWith('fa-')) {
+            // Check if it already has a style prefix (solid, brands, regular)
+            if (iconName.startsWith('fa-solid ') || iconName.startsWith('fa-brands ') || iconName.startsWith('fa-regular ') || iconName.startsWith('fa-light ') || iconName.startsWith('fa-thin ')) {
+                return iconName;
+            }
+            // Check for brand icons that need fa-brands
+            const brands = ['linkedin', 'facebook', 'instagram', 'twitter', 'whatsapp', 'github', 'youtube', 'viva-engage', 'microsoft', 'google', 'apple'];
+            if (brands.some(brand => iconName.includes(brand))) {
+                return `fa-brands ${iconName}`;
+            }
+            // Default to fa-solid
+            return `fa-solid ${iconName}`;
+        }
+        return iconName;
+    };
+
     // Admin Mission Creation Logic
     const renderAdminMissions = () => {
         const iconSelect = document.getElementById('mission-icon');
@@ -266,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (iconSelect && iconPreview) {
             const updateIconPreview = () => {
                 const iconValue = iconSelect.value || 'fa-question';
-                iconPreview.innerHTML = `<i class="fa-solid ${iconValue}"></i>`;
+                iconPreview.innerHTML = `<i class="${getIconClass(iconValue)}"></i>`;
             };
             iconSelect.addEventListener('change', updateIconPreview);
             updateIconPreview();
@@ -297,6 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             localStorage.setItem('moura_leite_missions', JSON.stringify(sharedMissionCache));
             renderCustomMissions();
+            if (typeof renderAdminMissionsList === 'function') renderAdminMissionsList();
             console.log('Shared missions synced from Firestore:', sharedMissionCache.length);
         }, (error) => {
             console.error('Error syncing shared missions:', error);
@@ -317,14 +336,26 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const updatePreview = () => {
                 if (!previewBox) return;
-                const iconClass = iconSelect.value || 'fa-question';
+                const iconValue = iconSelect.value || 'fa-question';
                 const color = colorInput.value || '#1976d2';
-                previewBox.innerHTML = `<i class="fa-solid ${iconClass}" style="color: ${color};"></i>`;
+                previewBox.innerHTML = `<i class="${getIconClass(iconValue)}" style="color: ${color};"></i>`;
             };
             
             if (iconSelect) iconSelect.addEventListener('change', updatePreview);
             if (colorInput) colorInput.addEventListener('input', updatePreview);
             
+            const cancelBtn = document.getElementById('cancel-edit-mission-btn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    missionForm.reset();
+                    delete missionForm.dataset.editingId;
+                    const submitBtn = missionForm.querySelector('button[type="submit"]');
+                    if (submitBtn) submitBtn.textContent = 'Cadastrar Missão';
+                    cancelBtn.classList.add('hidden');
+                    updatePreview();
+                });
+            }
+
             missionForm.hasListener = true;
         } else if (missionForm) {
             console.log('Mission form listener already registered');
@@ -332,6 +363,31 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('Mission form not found');
         }
     };
+    
+    const seedDefaultMissions = () => {
+        if (!localStorage.getItem('moura_leite_seeded_v1')) {
+            const defaults = [
+                { id: 'sys_checkin', name: 'Check-in Diário', frequency: 'daily', points: 1, validationType: 'button', active: true, surprise: false, description: 'Garanta seu ponto diário apenas acessando o portal.', icon: 'fa-calendar-check', color: '#1976d2', createdAt: new Date().toISOString() },
+                { id: 'sys_lunch', name: 'Integração entre Times', frequency: 'weekly', points: 5, validationType: 'photo', active: true, surprise: false, description: 'Almoço com você + 2 pessoas de departamentos diferentes.', icon: 'fa-people-arrows', color: '#f57c00', createdAt: new Date().toISOString() },
+                { id: 'sys_reuniao', name: 'Reunião de Integração', frequency: 'weekly', points: 8, validationType: 'photo', active: true, surprise: false, description: 'Participe de um encontro com colegas de outro setor.', icon: 'fa-handshake', color: '#4caf50', createdAt: new Date().toISOString() },
+                { id: 'sys_embaixador', name: 'Embaixador Digital', frequency: 'monthly', points: 15, validationType: 'link', active: true, surprise: false, description: 'Compartilhe o novo lançamento da Moura Leite no seu LinkedIn pessoal.', icon: 'fa-brands fa-linkedin', color: '#0077b5', createdAt: new Date().toISOString() },
+                { id: 'sys_vivaengage', name: 'Engajamento Viva Engage', frequency: 'monthly', points: 12, validationType: 'link', active: true, surprise: false, description: 'Faça uma postagem no Viva Engage da empresa.', icon: 'fa-share-nodes', color: '#7b2cbf', createdAt: new Date().toISOString() },
+                { id: 'sys_jogos', name: 'Dinâmica de Jogos', frequency: 'weekly', points: 20, validationType: 'button', active: true, surprise: false, description: 'Participe da dinâmica de interação dos nossos jogos de tabuleiro durante a semana. Procure o Alex ou a Mariana do RH para alinhar o dia e horário.', icon: 'fa-people-group', color: '#F1863B', createdAt: new Date().toISOString() }
+            ];
+            
+            let missions = JSON.parse(localStorage.getItem('moura_leite_missions')) || [];
+            defaults.forEach(d => {
+                if (!missions.find(m => m.id === d.id)) missions.push(d);
+            });
+            localStorage.setItem('moura_leite_missions', JSON.stringify(missions));
+            localStorage.setItem('moura_leite_seeded_v1', 'true');
+            
+            if (dbAvailable && missionsCollection) {
+                defaults.forEach(d => missionsCollection.doc(d.id).set(d, {merge: true}));
+            }
+        }
+    };
+
     
     const renderCustomMissions = () => {
         const questsGrid = document.getElementById('quests-grid');
@@ -353,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const showFrequencyBadge = !mission.surprise;
                 const surpriseBadge = mission.surprise ? `<div class="quest-surprise-badge"><span class="fire-emoji">🔥</span><span>Surpresa</span></div>` : '';
                 const pointValue = Math.floor((mission.points || 0) * multiplier);
-                const iconClass = mission.icon ? `fa-solid ${mission.icon}` : 'fa-solid fa-bullseye';
+                const iconClass = getIconClass(mission.icon);
                 const iconColor = mission.color || '#1976d2';
                 const expiresAt = mission.expiresAt ? new Date(mission.expiresAt).getTime() : null;
                 const isTimed = !!expiresAt;
@@ -373,7 +429,13 @@ document.addEventListener('DOMContentLoaded', () => {
                              : mission.frequency === 'weekly' ? currentWeek
                              : currentMonth;
                 
-                const isCompleted = storedUser[lastKey] === dateKey;
+                const isCompleted = storedUser[lastKey] === dateKey || 
+                                    (mission.id === 'sys_checkin' && storedUser.lastCheckIn === todayStr) ||
+                                    (mission.id === 'sys_lunch' && storedUser.lastLunchWeek === currentWeek) ||
+                                    (mission.id === 'sys_reuniao' && storedUser.lastReuniaoWeek === currentWeek) ||
+                                    (mission.id === 'sys_embaixador' && storedUser.lastLinkedInMonth === currentMonth) ||
+                                    (mission.id === 'sys_vivaengage' && storedUser.lastVivaEngageMonth === currentMonth) ||
+                                    (mission.id === 'sys_jogos' && storedUser.lastGamesWeek === currentWeek);
                 
                 let buttonText = isCompleted ? 'Concluído' : 
                     (mission.validationType === 'photo' ? 'Enviar Foto' : 
@@ -382,7 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isExpired && !isCompleted) buttonText = 'Expirada';
                 
                 const buttonDisabled = (isCompleted || isExpired) ? 'disabled' : '';
-                const actionLabel = mission.validationType === 'photo' ? 'Enviar Foto' : mission.validationType === 'link' ? 'Enviar Link' : 'Validar';
                 
                 const adminActions = isAdmin ? `
                             <div class="admin-mission-actions">
@@ -408,6 +469,79 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             })
             .join(''));
+
+        const dashboardList = document.getElementById('dashboard-missions-list');
+        if (dashboardList) {
+            dashboardList.innerHTML = '';
+            const topMissions = missions.filter(m => m.active && !m.surprise).slice(0, 4);
+            dashboardList.insertAdjacentHTML('beforeend', topMissions.map(mission => {
+                const iconClass = getIconClass(mission.icon);
+                const pointValue = Math.floor((mission.points || 0) * multiplier);
+                
+                const lastKey = mission.frequency === 'daily' ? 'lastCustomDaily_' + mission.id
+                              : mission.frequency === 'weekly' ? 'lastCustomWeekly_' + mission.id
+                              : 'lastCustomMonthly_' + mission.id;
+                const dateKey = mission.frequency === 'daily' ? todayStr
+                             : mission.frequency === 'weekly' ? currentWeek
+                             : currentMonth;
+                const isCompleted = storedUser[lastKey] === dateKey || 
+                                    (mission.id === 'sys_checkin' && storedUser.lastCheckIn === todayStr) ||
+                                    (mission.id === 'sys_lunch' && storedUser.lastLunchWeek === currentWeek) ||
+                                    (mission.id === 'sys_reuniao' && storedUser.lastReuniaoWeek === currentWeek) ||
+                                    (mission.id === 'sys_embaixador' && storedUser.lastLinkedInMonth === currentMonth) ||
+                                    (mission.id === 'sys_vivaengage' && storedUser.lastVivaEngageMonth === currentMonth) ||
+                                    (mission.id === 'sys_jogos' && storedUser.lastGamesWeek === currentWeek);
+
+                let buttonText = isCompleted ? 'Concluído' : 
+                    (mission.validationType === 'photo' ? 'Enviar Foto' : 
+                     mission.validationType === 'link' ? 'Enviar Link' : '+'+pointValue+' pts');
+                     
+                return `
+                    <div class="mission-item">
+                        <div class="mission-icon" style="background-color: ${mission.color || '#1976d2'}20; color: ${mission.color || '#1976d2'}">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <div class="mission-details">
+                            <h4>${mission.name}</h4>
+                            <p>${isCompleted ? 'Missão cumprida!' : mission.description.substring(0, 40) + '...'}</p>
+                        </div>
+                        <button class="btn-checkin custom-mission-btn" ${isCompleted ? 'disabled' : ''} data-mission-id="${mission.id}" data-mission-name="${mission.name}" data-mission-points="${mission.points}" data-validation-type="${mission.validationType}" data-frequency="${mission.frequency}">
+                            ${buttonText}
+                        </button>
+                    </div>
+                `;
+            }).join(''));
+        }
+    };
+
+    const renderAdminMissionsList = () => {
+        const body = document.getElementById('admin-missions-list-body');
+        if (!body) return;
+
+        const missions = getMissionData();
+        if (missions.length === 0) {
+            body.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">Nenhuma missão cadastrada.</td></tr>';
+            return;
+        }
+
+        body.innerHTML = missions.map(mission => {
+            const freqLabel = mission.frequency === 'daily' ? 'Diária' : mission.frequency === 'weekly' ? 'Semanal' : 'Mensal';
+            const statusLabel = mission.active ? 'Ativa' : 'Inativa';
+            return `
+                <tr>
+                    <td><strong>${mission.name}</strong></td>
+                    <td>${freqLabel}</td>
+                    <td>${mission.points} pts</td>
+                    <td><span class="status-badge ${mission.active ? 'status-unlocked' : 'status-locked'}">${statusLabel}</span></td>
+                    <td>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                            <button onclick="editMission('${mission.id}')" class="btn-buy" style="padding:4px 8px; font-size:10px;">Editar</button>
+                            <button onclick="deleteMission('${mission.id}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#d32f2f;">Excluir</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     };
 
     const handleMissionSubmit = async (e) => {
@@ -415,6 +549,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         console.log('Mission form submitted');
         
+        const form = document.getElementById('mission-form');
+        const editingId = form.dataset.editingId;
+
         const name = document.getElementById('mission-name').value;
         const frequency = document.getElementById('mission-frequency').value;
         const description = document.getElementById('mission-description').value;
@@ -427,53 +564,96 @@ document.addEventListener('DOMContentLoaded', () => {
         const durationHours = parseInt(document.getElementById('mission-duration').value, 10);
         const expiresAt = surprise && durationHours > 0 ? new Date(Date.now() + durationHours * 3600000).toISOString() : null;
 
-        const newMission = {
-            id: Date.now().toString(),
-            name,
-            frequency,
-            description,
-            points,
-            icon,
-            color,
-            validationType,
-            active,
-            surprise,
-            durationHours: surprise ? durationHours : null,
-            expiresAt,
-            createdAt: new Date().toISOString()
-        };
-
         try {
             const missions = JSON.parse(localStorage.getItem('moura_leite_missions')) || [];
-            missions.push(newMission);
-            localStorage.setItem('moura_leite_missions', JSON.stringify(missions));
 
-            if (dbAvailable && missionsCollection) {
-                try {
-                    await missionsCollection.doc(newMission.id).set(newMission);
-                    console.log('Mission persisted to Firestore:', newMission.id);
-                } catch (firestoreError) {
-                    console.error('Firestore write failed:', firestoreError);
-                    alert('Missão salva localmente, mas não foi possível gravar no Firestore: ' + firestoreError.message);
+            if (editingId) {
+                // Update existing
+                const index = missions.findIndex(m => m.id === editingId);
+                if (index !== -1) {
+                    const updatedMission = {
+                        ...missions[index],
+                        name,
+                        frequency,
+                        description,
+                        points,
+                        icon,
+                        color,
+                        validationType,
+                        active,
+                        surprise,
+                        durationHours: surprise ? durationHours : null,
+                        expiresAt: surprise && durationHours > 0 && !missions[index].expiresAt ? new Date(Date.now() + durationHours * 3600000).toISOString() : missions[index].expiresAt,
+                        updatedAt: new Date().toISOString()
+                    };
+                    missions[index] = updatedMission;
+                    localStorage.setItem('moura_leite_missions', JSON.stringify(missions));
+
+                    if (dbAvailable && missionsCollection) {
+                        try {
+                            await missionsCollection.doc(editingId).set(updatedMission, { merge: true });
+                            console.log('Mission updated in Firestore:', editingId);
+                        } catch (firestoreError) {
+                            console.error('Firestore update failed:', firestoreError);
+                            alert('Missão atualizada localmente, mas não foi possível gravar no Firestore: ' + firestoreError.message);
+                        }
+                    }
+                    alert('Missão atualizada com sucesso!');
                 }
-            } else {
-                console.warn('Firestore unavailable, mission saved only locally.');
-            }
+                
+                delete form.dataset.editingId;
+                const submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.textContent = 'Cadastrar Missão';
+                const cancelBtn = document.getElementById('cancel-edit-mission-btn');
+                if (cancelBtn) cancelBtn.classList.add('hidden');
 
-            console.log('Mission saved successfully:', newMission);
-            alert('Missão cadastrada com sucesso!');
+            } else {
+                // Create new
+                const newMission = {
+                    id: Date.now().toString(),
+                    name,
+                    frequency,
+                    description,
+                    points,
+                    icon,
+                    color,
+                    validationType,
+                    active,
+                    surprise,
+                    durationHours: surprise ? durationHours : null,
+                    expiresAt,
+                    createdAt: new Date().toISOString()
+                };
+
+                missions.push(newMission);
+                localStorage.setItem('moura_leite_missions', JSON.stringify(missions));
+
+                if (dbAvailable && missionsCollection) {
+                    try {
+                        await missionsCollection.doc(newMission.id).set(newMission);
+                        console.log('Mission persisted to Firestore:', newMission.id);
+                    } catch (firestoreError) {
+                        console.error('Firestore write failed:', firestoreError);
+                        alert('Missão salva localmente, mas não foi possível gravar no Firestore: ' + firestoreError.message);
+                    }
+                } else {
+                    console.warn('Firestore unavailable, mission saved only locally.');
+                }
+                alert('Missão cadastrada com sucesso!');
+            }
             
             // Reset form
-            document.getElementById('mission-form').reset();
+            form.reset();
             document.getElementById('mission-color').value = '#1976d2';
             document.getElementById('mission-icon').value = '';
             // Reset preview
             const previewBox = document.getElementById('mission-icon-preview');
             if (previewBox) previewBox.innerHTML = '<i class="fa-solid fa-question" style="color: #1976d2;"></i>';
             renderCustomMissions();
+            if (typeof renderAdminMissionsList === 'function') renderAdminMissionsList();
         } catch (error) {
-            console.error('Erro ao cadastrar missão:', error);
-            alert('Erro ao cadastrar missão: ' + error.message);
+            console.error('Erro ao salvar missão:', error);
+            alert('Erro ao salvar missão: ' + error.message);
         }
     };
 
@@ -490,6 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         renderCustomMissions();
+        if (typeof renderAdminMissionsList === 'function') renderAdminMissionsList();
         alert('Missão excluída com sucesso.');
     };
 
@@ -498,33 +679,41 @@ document.addEventListener('DOMContentLoaded', () => {
         const mission = missions.find(m => m.id === missionId);
         if (!mission) return alert('Missão não encontrada.');
 
-        const newName = prompt('Nome da missão:', mission.name);
-        if (newName === null) return;
-        const newDescription = prompt('Descrição:', mission.description);
-        if (newDescription === null) return;
-        const newPoints = prompt('Pontos:', mission.points);
-        if (newPoints === null) return;
-        const newFrequency = prompt('Frequência (daily, weekly, monthly):', mission.frequency);
-        if (newFrequency === null) return;
-        const newValidationType = prompt('Tipo de validação (button, photo, link):', mission.validationType);
-        if (newValidationType === null) return;
+        document.getElementById('mission-name').value = mission.name || '';
+        document.getElementById('mission-frequency').value = mission.frequency || '';
+        document.getElementById('mission-description').value = mission.description || '';
+        document.getElementById('mission-points').value = mission.points || '';
+        document.getElementById('mission-icon').value = mission.icon || '';
+        document.getElementById('mission-color').value = mission.color || '#1976d2';
+        document.getElementById('mission-validation-type').value = mission.validationType || '';
+        document.getElementById('mission-active').checked = mission.active !== false;
+        document.getElementById('mission-surprise').checked = mission.surprise || false;
+        document.getElementById('mission-duration').value = mission.durationHours || '';
 
-        mission.name = newName.trim() || mission.name;
-        mission.description = newDescription.trim() || mission.description;
-        mission.points = parseInt(newPoints) || mission.points;
-        mission.frequency = ['daily','weekly','monthly'].includes(newFrequency) ? newFrequency : mission.frequency;
-        mission.validationType = ['button','photo','link'].includes(newValidationType) ? newValidationType : mission.validationType;
-
-        localStorage.setItem('moura_leite_missions', JSON.stringify(missions));
-        if (dbAvailable && missionsCollection) {
-            try {
-                await missionsCollection.doc(missionId).set(mission, { merge: true });
-            } catch (e) {
-                console.error('Erro ao atualizar missão no Firestore:', e);
-            }
+        // Trigger preview update
+        const iconSelect = document.getElementById('mission-icon');
+        if (iconSelect) {
+            const event = new Event('change');
+            iconSelect.dispatchEvent(event);
         }
-        renderCustomMissions();
-        alert('Missão atualizada com sucesso.');
+
+        // Set editing state
+        const form = document.getElementById('mission-form');
+        form.dataset.editingId = mission.id;
+        
+        // Change submit button text
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = 'Salvar Alterações';
+        }
+        
+        // Show cancel button
+        const cancelBtn = document.getElementById('cancel-edit-mission-btn');
+        if (cancelBtn) cancelBtn.classList.remove('hidden');
+
+        // Switch to admin missions page and scroll to top
+        showPage('admin-missions');
+        window.scrollTo(0, 0);
     };
 
     window.resetUserPassword = async (email) => {
@@ -570,40 +759,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
         const user = allUsers.find(u => u.email === email);
         if (user) {
-            const newName = prompt('Novo nome:', user.username);
-            const newPoints = prompt('Novos pontos:', user.points);
+            document.getElementById('edit-user-email').value = user.email;
+            document.getElementById('edit-user-email-label').innerText = user.email;
+            document.getElementById('edit-user-name').value = user.username || '';
+            document.getElementById('edit-user-points').value = user.points || 0;
+            document.getElementById('edit-user-dept').value = user.dept || '';
+            document.getElementById('edit-user-dir').value = user.diretoria || '';
             
-            let updates = {};
-            if (newName !== null) updates.username = newName;
-            if (newPoints !== null) {
-                const p = parseInt(newPoints) || 0;
-                updates.points = p;
-                
-                // If editing self, update current session variables immediately
-                if (email === storedUser.email) {
-                    storedUser.points = p;
-                    userPoints = p;
-                    localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
-                    updatePointsDisplay();
-                    updateUIWithUser();
-                }
-            }
-            
-            if (newName !== null && email === storedUser.email) {
-                storedUser.username = newName;
-                localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
-                updateUIWithUser();
-            }
-
-            if (Object.keys(updates).length > 0) {
-                try {
-                    await db.collection("users").doc(email).update(updates);
-                    addNotification(`Usuário ${email} editado.`);
-                } catch (e) {
-                    console.error("Erro ao editar", e);
-                    alert("Erro ao editar usuário.");
-                }
-            }
+            document.getElementById('edit-user-modal').classList.remove('hidden');
         }
     };
 
@@ -719,22 +882,22 @@ document.addEventListener('DOMContentLoaded', () => {
         let completedGoals = 0;
 
         // Check Goal 1: Daily Check-in
-        if (storedUser.lastCheckIn === todayStr) completedGoals++;
+        if (storedUser.lastCheckIn === todayStr || storedUser['lastCustomDaily_sys_checkin'] === todayStr) completedGoals++;
 
         // Check Goal 2: Weekly Lunch/Integração entre Times
-        if (storedUser.lastLunchWeek === currentWeek) completedGoals++;
+        if (storedUser.lastLunchWeek === currentWeek || storedUser['lastCustomWeekly_sys_lunch'] === currentWeek) completedGoals++;
 
         // Check Goal 3: Weekly Reunião de Integração
-        if (storedUser.lastReuniaoWeek === currentWeek) completedGoals++;
+        if (storedUser.lastReuniaoWeek === currentWeek || storedUser['lastCustomWeekly_sys_reuniao'] === currentWeek) completedGoals++;
 
         // Check Goal 4: Monthly Embaixador Digital
-        if (storedUser.lastLinkedInMonth === currentMonth) completedGoals++;
+        if (storedUser.lastLinkedInMonth === currentMonth || storedUser['lastCustomMonthly_sys_embaixador'] === currentMonth) completedGoals++;
 
         // Check Goal 5: Monthly Viva Engage
-        if (storedUser.lastVivaEngageMonth === currentMonth) completedGoals++;
+        if (storedUser.lastVivaEngageMonth === currentMonth || storedUser['lastCustomMonthly_sys_vivaengage'] === currentMonth) completedGoals++;
 
         // Check Goal 6: Weekly Tarde dos Jogos
-        if (storedUser.lastGamesWeek === currentWeek) completedGoals++;
+        if (storedUser.lastGamesWeek === currentWeek || storedUser['lastCustomWeekly_sys_jogos'] === currentWeek) completedGoals++;
 
         const percentage = (completedGoals / totalGoals) * 100;
 
@@ -759,25 +922,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 500);
         }
 
-        // Update Quest Labels based on multiplier
-        const multiplier = getCurrentMultiplier();
-        const checkinBtn = document.getElementById('checkin-btn');
-        const lunchBtn = document.getElementById('lunch-btn');
-        const embaixadorBtn = document.getElementById('embaixador-btn');
-        const jogosBtn = document.getElementById('jogos-btn');
-        
-        if (checkinBtn && !checkinBtn.disabled) checkinBtn.textContent = `+${Math.floor(1 * multiplier)} pts`;
-        if (lunchBtn && !lunchBtn.disabled) lunchBtn.textContent = `+${Math.floor(5 * multiplier)} pts`;
-        if (embaixadorBtn && !embaixadorBtn.disabled) embaixadorBtn.textContent = `+${Math.floor(15 * multiplier)} pts`;
-        if (jogosBtn && !jogosBtn.disabled) jogosBtn.textContent = `+${Math.floor(20 * multiplier)} pts`;
-
-        const ptsSpans = document.querySelectorAll('.pts-gain');
-        if (ptsSpans.length >= 4) {
-             ptsSpans[0].textContent = `+${Math.floor(1 * multiplier)} pts`;
-             ptsSpans[1].textContent = `+${Math.floor(5 * multiplier)} pts`;
-             ptsSpans[2].textContent = `+${Math.floor(15 * multiplier)} pts`;
-             ptsSpans[3].textContent = `+${Math.floor(20 * multiplier)} pts`;
-        }
     };
 
     updateUIWithUser();
@@ -851,6 +995,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateRanking();
 
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('Deseja realmente sair?')) {
+                localStorage.removeItem('moura_leite_user');
+                window.location.href = 'login.html';
+            }
+        });
+    }
+
     // Modal Toggle for Ranks
     const btnVerNiveis = document.getElementById('btn-ver-niveis');
     const modalRanks = document.getElementById('ranks-modal');
@@ -868,26 +1023,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    window.addEventListener('click', (e) => {
-        if (e.target === modalRanks) {
-            modalRanks.classList.add('hidden');
-        }
-    });
+    // Edit User Modal Logic
+    const modalEditUser = document.getElementById('edit-user-modal');
+    const btnCloseEditUser = document.getElementById('close-edit-user');
+    const editUserForm = document.getElementById('edit-user-form');
 
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', (e) => {
+    if (btnCloseEditUser) {
+        btnCloseEditUser.addEventListener('click', () => {
+            modalEditUser.classList.add('hidden');
+        });
+    }
+
+    if (editUserForm) {
+        editUserForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (confirm('Deseja realmente sair?')) {
-                localStorage.removeItem('moura_leite_user');
-                window.location.href = 'login.html';
+            const email = document.getElementById('edit-user-email').value;
+            const username = document.getElementById('edit-user-name').value;
+            const points = parseInt(document.getElementById('edit-user-points').value) || 0;
+            const dept = document.getElementById('edit-user-dept').value;
+            const diretoria = document.getElementById('edit-user-dir').value;
+
+            let updates = { username, points, dept, diretoria };
+            
+            try {
+                await db.collection("users").doc(email).update(updates);
+                
+                // Update local session if editing self
+                if (email === storedUser.email) {
+                    Object.assign(storedUser, updates);
+                    localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+                    updateUIWithUser();
+                }
+
+                alert('Usuário atualizado com sucesso!');
+                modalEditUser.classList.add('hidden');
+            } catch (err) {
+                console.error("Erro ao editar usuário:", err);
+                alert("Erro ao salvar alterações.");
             }
         });
     }
 
+    window.addEventListener('click', (e) => {
+        if (e.target === modalRanks) {
+            modalRanks.classList.add('hidden');
+        }
+        if (e.target === modalEditUser) {
+            modalEditUser.classList.add('hidden');
+        }
+    });
+
+
+
     // Register mission form listener (after all functions are defined)
     registerMissionFormListener();
     setTimeout(registerMissionFormListener, 100);
+
+    // Seed defaults
+    seedDefaultMissions();
 
     // Subscribe to shared missions so all users see created missions
     subscribeSharedMissions();
@@ -1308,7 +1501,15 @@ document.addEventListener('DOMContentLoaded', () => {
                          : frequency === 'weekly' ? currentWeek
                          : currentMonth;
 
-            if (storedUser[lastKey] === dateKey) {
+            const isCompleted = storedUser[lastKey] === dateKey || 
+                                (missionId === 'sys_checkin' && storedUser.lastCheckIn === todayStr) ||
+                                (missionId === 'sys_lunch' && storedUser.lastLunchWeek === currentWeek) ||
+                                (missionId === 'sys_reuniao' && storedUser.lastReuniaoWeek === currentWeek) ||
+                                (missionId === 'sys_embaixador' && storedUser.lastLinkedInMonth === currentMonth) ||
+                                (missionId === 'sys_vivaengage' && storedUser.lastVivaEngageMonth === currentMonth) ||
+                                (missionId === 'sys_jogos' && storedUser.lastGamesWeek === currentWeek);
+
+            if (isCompleted) {
                 logMissionAttempt(storedUser.email, missionId, missionName, false, getServerTime());
                 alert('Você já completou esta missão neste período.');
                 return;
@@ -1348,6 +1549,11 @@ document.addEventListener('DOMContentLoaded', () => {
         userPoints += earned;
         storedUser.points = userPoints;
         storedUser[lastKey] = dateKey;
+        if (missionId === 'sys_lunch') storedUser.lunchCount = (storedUser.lunchCount || 0) + 1;
+        if (missionId === 'sys_reuniao') storedUser.reuniaoCount = (storedUser.reuniaoCount || 0) + 1;
+        if (missionId === 'sys_embaixador') storedUser.linkedInCount = (storedUser.linkedInCount || 0) + 1;
+        if (missionId === 'sys_vivaengage') storedUser.vivaEngageCount = (storedUser.vivaEngageCount || 0) + 1;
+        
         const transaction = {
             user: storedUser.username,
             item: `Missão: ${missionName}`,
@@ -1481,457 +1687,6 @@ document.addEventListener('DOMContentLoaded', () => {
         addNotification(`${missionName} enviada para validação! +${earned} pts.`);
         alert(`Link enviado! Você ganhou ${earned} pontos por: ${missionName}`);
     };
-
-    // Weekly Lunch Logic with Photo Audit (Multi-location)
-    const lunchBtns = document.querySelectorAll('#lunch-btn, #lunch-btn-full');
-    const lunchStatus = document.getElementById('lunch-status');
-    const lunchPhotoInput = document.getElementById('lunch-photo-input');
-
-    const updateLunchUI = () => {
-        if (storedUser.lastLunchWeek === currentWeek) {
-            lunchBtns.forEach(btn => {
-                btn.disabled = true;
-                btn.textContent = 'Concluído';
-            });
-            if (lunchStatus) lunchStatus.textContent = 'Integração semanal concluída! Parabéns.';
-        }
-    };
-
-    lunchBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (storedUser.lastLunchWeek !== currentWeek) {
-                alert('Para validar essa missão de 5 pontos, você precisa anexar uma foto do almoço com os colegas de outros departamentos.');
-                lunchPhotoInput.click();
-            }
-        });
-    });
-
-    if (lunchPhotoInput) {
-        lunchPhotoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const photoData = event.target.result;
-                const multiplier = getCurrentMultiplier();
-                const earned = Math.floor(5 * multiplier);
-                userPoints += earned;
-                storedUser.points = userPoints;
-                storedUser.lastLunchWeek = currentWeek;
-                storedUser.lunchCount = (storedUser.lunchCount || 0) + 1;
-                
-                const now = new Date();
-                const transaction = {
-                    user: storedUser.username,
-                    item: 'Integração entre Times',
-                    date: now.toLocaleDateString('pt-BR'),
-                    time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                    status: 'Concluído',
-                    photo: photoData,
-                    type: 'Ganho'
-                };
-
-                if (!storedUser.history) storedUser.history = [];
-                storedUser.history.unshift(transaction);
-                
-                // Global Sync
-                const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-                globalHistory.unshift(transaction);
-                localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-
-                saveAndSync();
-                updatePointsDisplay();
-                updateRanking();
-                updateUIWithUser();
-                updateLunchUI();
-                triggerCelebration();
-                logSocialActivity('almoçou com o time de outro depto! 🍽️', 'fa-utensils');
-                addNotification(`Foto enviada e pontos creditados! +${earned} pts.`);
-                alert(`Missão concluída com sucesso! Você ganhou ${earned} pontos.`);
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-
-    // Reunião de Integração Logic (Weekly)
-    const reuniaoBtns = document.querySelectorAll('#reuniao-btn, #reuniao-btn-full');
-    const reuniaoPhotoInput = document.getElementById('reuniao-photo-input');
-
-    const updateReuniaoUI = () => {
-        if (storedUser.lastReuniaoWeek === currentWeek) {
-            reuniaoBtns.forEach(btn => {
-                btn.disabled = true;
-                btn.textContent = 'Concluído';
-            });
-        }
-    };
-
-    reuniaoBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (storedUser.lastReuniaoWeek !== currentWeek) {
-                alert('Para validar esta missão de 8 pontos, anexe uma foto da reunião de integração com colegas de outro setor.');
-                if (reuniaoPhotoInput) reuniaoPhotoInput.click();
-            }
-        });
-    });
-
-    if (reuniaoPhotoInput) {
-        reuniaoPhotoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const photoData = event.target.result;
-                const multiplier = getCurrentMultiplier();
-                const earned = Math.floor(8 * multiplier);
-                userPoints += earned;
-                storedUser.points = userPoints;
-                storedUser.lastReuniaoWeek = currentWeek;
-                storedUser.reuniaoCount = (storedUser.reuniaoCount || 0) + 1;
-
-                const now = new Date();
-                const transaction = {
-                    user: storedUser.username,
-                    item: 'Reunião de Integração',
-                    date: now.toLocaleDateString('pt-BR'),
-                    time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                    status: 'Concluído',
-                    photo: photoData,
-                    type: 'Ganho'
-                };
-
-                if (!storedUser.history) storedUser.history = [];
-                storedUser.history.unshift(transaction);
-
-                const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-                globalHistory.unshift(transaction);
-                localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-
-                saveAndSync();
-                updatePointsDisplay();
-                updateRanking();
-                updateUIWithUser();
-                updateReuniaoUI();
-                triggerCelebration();
-                logSocialActivity('participou de uma reunião de integração! 🤝', 'fa-handshake');
-                addNotification(`Foto enviada e pontos creditados! +${earned} pts.`);
-                alert(`Missão concluída com sucesso! Você ganhou ${earned} pontos.`);
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-
-    // --- JUICE & SOCIAL FEED FUNCTIONS ---
-    const triggerCelebration = () => {
-        const count = 200;
-        const defaults = { origin: { y: 0.7 } };
-
-        function fire(particleRatio, opts) {
-            confetti({
-                ...defaults,
-                ...opts,
-                particleCount: Math.floor(count * particleRatio)
-            });
-        }
-
-        fire(0.25, { spread: 26, startVelocity: 55 });
-        fire(0.2, { spread: 60 });
-        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
-        fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
-        fire(0.1, { spread: 120, startVelocity: 45 });
-    };
-
-    const logSocialActivity = async (message, icon) => {
-        const activity = {
-            user: storedUser.username,
-            avatar: storedUser.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(storedUser.username)}&background=random`,
-            message: message,
-            icon: icon || 'fa-star',
-            timestamp: new Date().toISOString()
-        };
-
-        // Local Fallback
-        const localFeed = JSON.parse(localStorage.getItem('moura_leite_social_feed')) || [];
-        localFeed.unshift(activity);
-        localStorage.setItem('moura_leite_social_feed', JSON.stringify(localFeed.slice(0, 30)));
-
-        // Firestore Sync
-        if (dbAvailable) {
-            try {
-                await db.collection("social_feed").add(activity);
-            } catch (e) {
-                console.error("Erro ao salvar no feed social:", e);
-            }
-        }
-        updateSocialFeedUI();
-    };
-
-    const updateSocialFeedUI = () => {
-        const feedList = document.getElementById('social-feed-list');
-        if (!feedList) return;
-
-        // Use local data for now, then Firestore if available
-        let activities = JSON.parse(localStorage.getItem('moura_leite_social_feed')) || [];
-
-        if (dbAvailable) {
-            db.collection("social_feed")
-                .orderBy("timestamp", "desc")
-                .limit(20)
-                .onSnapshot((snapshot) => {
-                    const firestoreActivities = [];
-                    snapshot.forEach(doc => firestoreActivities.push(doc.data()));
-                    renderFeed(firestoreActivities);
-                }, (error) => {
-                    console.error("Error listening to feed:", error);
-                    renderFeed(activities);
-                });
-        } else {
-            renderFeed(activities);
-        }
-
-        function renderFeed(list) {
-            if (list.length === 0) {
-                feedList.innerHTML = '<p style="padding:1rem; color:#999; text-align:center;">Nenhuma atividade recente.</p>';
-                return;
-            }
-
-            feedList.innerHTML = list.map(act => {
-                const timeAgo = formatTimeAgo(act.timestamp);
-                return `
-                    <div class="feed-item">
-                        <img src="${act.avatar}" class="feed-avatar" alt="Avatar">
-                        <div class="feed-content">
-                            <b>${act.user}</b> ${act.message}
-                            <div class="feed-time">${timeAgo}</div>
-                        </div>
-                        <i class="fa-solid ${act.icon} feed-icon"></i>
-                    </div>
-                `;
-            }).join('');
-        }
-    };
-
-    const formatTimeAgo = (timestamp) => {
-        const diff = Date.now() - new Date(timestamp).getTime();
-        const minutes = Math.floor(diff / 60000);
-        if (minutes < 1) return 'Agora mesmo';
-        if (minutes < 60) return `${minutes}m atrás`;
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h atrás`;
-        return new Date(timestamp).toLocaleDateString('pt-BR');
-    };
-
-    // Initialize Feed
-    updateSocialFeedUI();
-
-    async function saveAndSync() {
-        // Save to current session
-        localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
-        
-        // Sync to Firestore
-        if (storedUser.email) {
-            try {
-                await db.collection("users").doc(storedUser.email).set(storedUser, { merge: true });
-            } catch (e) {
-                console.error("Erro ao sincronizar com Firestore:", e);
-            }
-        }
-    }
-
-    // Embaixador Digital Logic (Monthly)
-    const embaixadorBtns = document.querySelectorAll('#embaixador-btn, #embaixador-btn-full');
-
-    const updateEmbaixadorUI = () => {
-        if (storedUser.lastLinkedInMonth === currentMonth) {
-            embaixadorBtns.forEach(btn => {
-                btn.disabled = true;
-                btn.textContent = 'Concluído';
-            });
-        }
-    };
-
-    embaixadorBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (storedUser.lastLinkedInMonth !== currentMonth) {
-                const link = prompt('Insira o link da sua publicação no LinkedIn para validação:');
-                
-                if (link) {
-                    // Validar se é um link real
-                    const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/;
-                    if (!urlPattern.test(link)) {
-                        alert('Por favor, insira um link válido (ex: https://linkedin.com/...)');
-                        return;
-                    }
-
-                    const multiplier = getCurrentMultiplier();
-                    const earned = Math.floor(15 * multiplier);
-                    userPoints += earned;
-                    storedUser.points = userPoints;
-                    storedUser.lastLinkedInMonth = currentMonth;
-                    storedUser.linkedInCount = (storedUser.linkedInCount || 0) + 1;
-                    
-                    const transaction = {
-                        user: storedUser.username,
-                        item: 'Embaixador Digital',
-                        date: now.toLocaleDateString('pt-BR'),
-                        time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                        status: 'Concluído',
-                        link: link,
-                        type: 'Ganho'
-                    };
-                    if (!storedUser.history) storedUser.history = [];
-                    storedUser.history.unshift(transaction);
-                    
-                    // Global Sync
-                    const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-                    globalHistory.unshift(transaction);
-                    localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-                    
-                    saveAndSync();
-                    updatePointsDisplay();
-                    updateUIWithUser();
-                    updateRanking();
-                    updateUIWithUser();
-                    updateEmbaixadorUI();
-                    triggerCelebration();
-                    logSocialActivity('brilhou como Embaixador Digital no LinkedIn! 🚀', 'fa-linkedin');
-                    addNotification(`Missão Embaixador concluída! +${earned} pts.`);
-                    alert(`Sucesso! Você ganhou ${earned} pontos.`);
-                }
-            }
-        });
-    });
-
-    // Viva Engage Logic (Monthly)
-    const vivaengageBtns = document.querySelectorAll('#vivaengage-btn, #vivaengage-btn-full');
-
-    const updateVivaEngageUI = () => {
-        if (storedUser.lastVivaEngageMonth === currentMonth) {
-            vivaengageBtns.forEach(btn => {
-                btn.disabled = true;
-                btn.textContent = 'Concluído';
-            });
-        }
-    };
-
-    vivaengageBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (storedUser.lastVivaEngageMonth !== currentMonth) {
-                const link = prompt('Insira o link da sua postagem no Viva Engage para validação:');
-                
-                if (link) {
-                    // Validar se é um link real
-                    const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/;
-                    if (!urlPattern.test(link)) {
-                        alert('Por favor, insira um link válido');
-                        return;
-                    }
-
-                    const multiplier = getCurrentMultiplier();
-                    const earned = Math.floor(12 * multiplier);
-                    userPoints += earned;
-                    storedUser.points = userPoints;
-                    storedUser.lastVivaEngageMonth = currentMonth;
-                    storedUser.vivaEngageCount = (storedUser.vivaEngageCount || 0) + 1;
-                    
-                    const transaction = {
-                        user: storedUser.username,
-                        item: 'Engajamento Viva Engage',
-                        date: now.toLocaleDateString('pt-BR'),
-                        time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                        status: 'Concluído',
-                        link: link,
-                        type: 'Ganho'
-                    };
-                    if (!storedUser.history) storedUser.history = [];
-                    storedUser.history.unshift(transaction);
-                    
-                    // Global Sync
-                    const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-                    globalHistory.unshift(transaction);
-                    localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-                    
-                    saveAndSync();
-                    updatePointsDisplay();
-                    updateUIWithUser();
-                    updateRanking();
-                    updateUIWithUser();
-                    updateVivaEngageUI();
-                    addNotification(`Missão Viva Engage concluída! +${earned} pts.`);
-                    alert(`Sucesso! Você ganhou ${earned} pontos.`);
-                }
-            }
-        });
-    });
-
-    // Tarde dos Jogos Logic (Weekly)
-    const jogosBtns = document.querySelectorAll('#jogos-btn, #jogos-btn-full');
-    const gamesPhotoInput = document.getElementById('games-photo-input');
-    
-    const updateJogosUI = () => {
-        if (storedUser.lastGamesWeek === currentWeek) {
-            jogosBtns.forEach(btn => {
-                btn.disabled = true;
-                btn.textContent = 'Concluído';
-            });
-        }
-    };
-
-    jogosBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (storedUser.lastGamesWeek !== currentWeek) {
-                alert('Para ganhar estes 20 pontos, anexe uma foto da sua participação na Tarde de Jogos.');
-                gamesPhotoInput.click();
-            }
-        });
-    });
-
-    if (gamesPhotoInput) {
-        gamesPhotoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const photoData = event.target.result;
-                const multiplier = getCurrentMultiplier();
-                const earned = Math.floor(20 * multiplier);
-                userPoints += earned;
-                storedUser.points = userPoints;
-                storedUser.lastGamesWeek = currentWeek;
-                
-                const now = new Date();
-                const transaction = {
-                    user: storedUser.username,
-                    item: 'Tarde dos Jogos',
-                    date: now.toLocaleDateString('pt-BR'),
-                    time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                    status: 'Concluído',
-                    photo: photoData,
-                    type: 'Ganho'
-                };
-
-                if (!storedUser.history) storedUser.history = [];
-                storedUser.history.unshift(transaction);
-                
-                // Global Sync
-                const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-                globalHistory.unshift(transaction);
-                localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-
-                saveAndSync();
-                updatePointsDisplay();
-                updateRanking();
-                updateUIWithUser();
-                updateJogosUI();
-                addNotification(`Foto da Tarde de Jogos enviada! +${earned} pts.`);
-                alert(`Sucesso! Você ganhou ${earned} pontos!`);
-            };
-            reader.readAsDataURL(file);
-        });
-    }
 
     window.viewPhoto = (photoData) => {
         const viewer = document.createElement('div');
