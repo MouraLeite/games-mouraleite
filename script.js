@@ -583,7 +583,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const validationType = document.getElementById('mission-validation-type').value;
         const active = document.getElementById('mission-active').checked;
         const surprise = document.getElementById('mission-surprise').checked;
-        const durationHours = parseInt(document.getElementById('mission-duration').value, 10);
+        const rawDuration = parseInt(document.getElementById('mission-duration').value, 10);
+        const durationHours = isNaN(rawDuration) ? 0 : rawDuration;
         const expiresAt = surprise && durationHours > 0 ? new Date(Date.now() + durationHours * 3600000).toISOString() : null;
 
         try {
@@ -593,6 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update existing
                 const index = missions.findIndex(m => m.id === editingId);
                 if (index !== -1) {
+                    const safeDuration = isNaN(durationHours) ? 0 : durationHours;
                     const updatedMission = {
                         ...missions[index],
                         name,
@@ -604,8 +606,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         validationType,
                         active,
                         surprise,
-                        durationHours: surprise ? durationHours : null,
-                        expiresAt: surprise && durationHours > 0 && !missions[index].expiresAt ? new Date(Date.now() + durationHours * 3600000).toISOString() : missions[index].expiresAt,
+                        durationHours: surprise ? safeDuration : null,
+                        expiresAt: (surprise && safeDuration > 0) ? (missions[index].expiresAt || new Date(Date.now() + safeDuration * 3600000).toISOString()) : null,
                         updatedAt: new Date().toISOString()
                     };
                     missions[index] = updatedMission;
