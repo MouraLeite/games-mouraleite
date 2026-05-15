@@ -1134,21 +1134,43 @@ document.addEventListener('DOMContentLoaded', () => {
             let updates = { username, points, dept, diretoria };
             
             try {
+                // Fetch current user data to check for point changes
+                const userDoc = await db.collection("users").doc(email).get();
+                const userData = userDoc.data() || {};
+                const oldPoints = parseInt(userData.points) || 0;
+
+                // Log transaction if points were adjusted
+                if (points !== oldPoints) {
+                    const diff = points - oldPoints;
+                    const serverTimestamp = getServerTime();
+                    const tx = {
+                        user: username,
+                        item: `Ajuste Administrativo (${diff >= 0 ? '+' : ''}${diff} pts)`,
+                        date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
+                        time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                        status: 'Concluído',
+                        serverTime: serverTimestamp
+                    };
+                    if (!updates.history) updates.history = userData.history || [];
+                    updates.history.unshift(tx);
+                }
+
                 await db.collection("users").doc(email).update(updates);
                 console.log(`Usuário ${email} atualizado com sucesso no Firestore.`);
                 
                 // Update local session if editing self
                 if (email === storedUser.email) {
-                    userPoints = points; // Atualiza a variável global de pontos
+                    userPoints = points; 
                     Object.assign(storedUser, updates);
                     localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
                     updatePointsDisplay();
                     updateUIWithUser();
                 }
 
-                // Força atualização da lista de usuários para o Admin
+                // Force update UI
                 if (typeof renderAdminUsers === 'function') renderAdminUsers();
                 if (typeof updateRanking === 'function') updateRanking();
+                if (typeof renderHistory === 'function') renderHistory();
 
                 alert('Usuário atualizado com sucesso!');
                 modalEditUser.classList.add('hidden');
@@ -1258,9 +1280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Sync to Firestore
-                if (dbAvailable) {
-                    db.collection('users').doc(storedUser.email).update({ points: userPoints }).catch(e => console.error('Sync error:', e));
-                }
+                saveAndSync();
 
                 updateRanking();
                 updateUIWithUser();
@@ -1366,11 +1386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
 
             // Persist to Firestore (authoritative record)
-            await db.collection('users').doc(storedUser.email).update({
-                points: userPoints,
-                lastBoostMonth: boostMonth,
-                boostActiveUntil: boostUntilTs
-            });
+            saveAndSync();
 
             updatePointsDisplay();
             updateRanking();
