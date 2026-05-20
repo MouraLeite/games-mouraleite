@@ -1085,7 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        rankingContainer.innerHTML = sortedUsers.map((user, index) => {
+        rankingContainer.innerHTML = sortedUsers.slice(0, 7).map((user, index) => {
             const isMe = user.email === storedUser.email;
             const rankClass = index === 0 ? 'first' : (isMe ? 'me' : '');
             
