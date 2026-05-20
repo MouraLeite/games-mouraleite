@@ -922,7 +922,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentRankObj = ranks.find((r, i) => userPoints <= r.next) || ranks[ranks.length-1];
         const nextRankObj = ranks[ranks.indexOf(currentRankObj) + 1] || currentRankObj;
         
+        const previousRank = storedUser.rank;
         storedUser.rank = currentRankObj.name;
+
+        if (previousRank && previousRank !== currentRankObj.name) {
+            const prevIndex = ranks.findIndex(r => r.name === previousRank);
+            const currIndex = ranks.findIndex(r => r.name === currentRankObj.name);
+            if (currIndex > prevIndex) {
+                logSocialActivity(`atingiu o nível ${currentRankObj.name}! 🚀`, currentRankObj.icon);
+            }
+        }
 
         // Update Sidebar
         const sidebarName = document.querySelector('.user-info .name');
@@ -1749,7 +1758,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUIWithUser();
                 updateCheckinUI();
                 triggerCelebration();
-                logSocialActivity('garantiu o check-in diário! 📅', 'fa-calendar-check');
                 addNotification(`Check-in diário realizado! +${earned} pts.`);
                 alert(`Parabéns! Você ganhou ${earned} ponto(s) pelo seu check-in diário.`);
             }
@@ -1899,7 +1907,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUIWithUser();
         renderCustomMissions();
         triggerCelebration();
-        logSocialActivity(`completou a missão: ${missionName}! ✅`, 'fa-check-circle');
         addNotification(`${missionName} concluída! +${earned} pts.`);
         alert(`Parabéns! Você ganhou ${earned} ponto(s) por completar: ${missionName}`);
     };
@@ -1965,7 +1972,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUIWithUser();
         renderCustomMissions();
         triggerCelebration();
-        logSocialActivity(`enviou evidência para: ${missionName}! 📸`, 'fa-camera');
         addNotification(`${missionName} enviada para validação! +${earned} pts.`);
         alert(`Foto enviada! Você ganhou ${earned} pontos por: ${missionName}`);
     };
@@ -2027,7 +2033,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUIWithUser();
         renderCustomMissions();
         triggerCelebration();
-        logSocialActivity(`completou a missão de link: ${missionName}! 🔗`, 'fa-link');
         addNotification(`${missionName} enviada para validação! +${earned} pts.`);
         alert(`Link enviado! Você ganhou ${earned} pontos por: ${missionName}`);
     };
