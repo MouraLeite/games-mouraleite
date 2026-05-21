@@ -341,6 +341,7 @@ body {
     border-radius: 50%;
     overflow: hidden;
     margin-right: 12px;
+    flex-shrink: 0;
 }
 
 .user-profile-mini .avatar img {
@@ -349,16 +350,28 @@ body {
     object-fit: cover;
 }
 
+.user-info {
+    overflow: hidden;
+    flex-grow: 1;
+}
+
 .user-info .name {
     display: block;
     font-weight: 600;
     font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .user-info .rank {
+    display: block;
     font-size: 0.75rem;
     color: var(--accent-gold);
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Main Content Styling */
