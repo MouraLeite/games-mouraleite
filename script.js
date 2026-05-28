@@ -169,17 +169,36 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update local global list
             localStorage.setItem('moura_leite_all_users', JSON.stringify(usersArray));
 
-            // FIREBASE É A FONTE DA VERDADE: Sempre sincroniza pontos do servidor para o local
+            // FIREBASE É A FONTE DA VERDADE: Sempre sincroniza dados do servidor para o local
             if (storedUser && storedUser.email) {
                 const currentUserInDb = usersArray.find(u => u.email === storedUser.email);
                 if (currentUserInDb) {
+                    let needsUpdate = false;
+                    
+                    // Sync points
                     const serverPoints = parseInt(currentUserInDb.points) || 0;
                     if (serverPoints !== userPoints) {
                         console.log(`🔄 Sincronizando pontos do servidor: Local(${userPoints}) → Server(${serverPoints})`);
                         userPoints = serverPoints;
+                        needsUpdate = true;
+                    }
+                    
+                    // CRITICAL FIX: Sync all completion flags and history so local state matches server
+                    Object.keys(currentUserInDb).forEach(key => {
+                        if (key.startsWith('last') || key === 'history' || key.endsWith('Count')) {
+                            // Only update if stringified values differ to avoid deep comparison complexity
+                            if (JSON.stringify(storedUser[key]) !== JSON.stringify(currentUserInDb[key])) {
+                                storedUser[key] = currentUserInDb[key];
+                                needsUpdate = true;
+                            }
+                        }
+                    });
+
+                    if (needsUpdate) {
                         storedUser.points = userPoints;
                         localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
-                        updatePointsDisplay();
+                        if (typeof updatePointsDisplay === 'function') updatePointsDisplay();
+                        if (typeof renderCustomMissions === 'function') renderCustomMissions();
                     }
                 }
             }
@@ -234,11 +253,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const isAdmin = storedUser.email === 'admin@mouraleite.com.br';
     const adminMenuItem = document.getElementById('admin-menu-item');
     const adminMissionsMenuItem = document.getElementById('admin-missions-menu-item');
+    const adminPrizesMenuItem = document.getElementById('admin-prizes-menu-item');
     if (isAdmin && adminMenuItem) {
         adminMenuItem.classList.remove('hidden');
     }
     if (isAdmin && adminMissionsMenuItem) {
         adminMissionsMenuItem.classList.remove('hidden');
+    }
+    if (isAdmin && adminPrizesMenuItem) {
+        adminPrizesMenuItem.classList.remove('hidden');
     }
 
     // Admin User Management Logic
@@ -275,6 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getIconClass = (iconName) => {
         if (!iconName) return 'fa-solid fa-bullseye';
+        if (iconName === 'svg-cap') return 'svg-cap'; // special SVG icon
+        if (iconName === 'svg-capsule') return 'svg-capsule'; // special SVG icon
         if (iconName.startsWith('fa-')) {
             // Check if it already has a style prefix (solid, brands, regular)
             if (iconName.startsWith('fa-solid ') || iconName.startsWith('fa-brands ') || iconName.startsWith('fa-regular ') || iconName.startsWith('fa-light ') || iconName.startsWith('fa-thin ')) {
@@ -289,6 +314,150 @@ document.addEventListener('DOMContentLoaded', () => {
             return `fa-solid ${iconName}`;
         }
         return iconName;
+    };
+
+    // Returns full HTML for an icon (supports custom SVGs)
+    const getIconHTML = (iconName, color) => {
+        if (iconName === 'svg-cap') {
+            const c = color || '#006837';
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit;">
+                <path d="M50 18 C30 18 16 32 14 50 L14 58 C14 60 15 62 17 62 L83 62 C85 62 86 60 86 58 L86 50 C84 32 70 18 50 18 Z" fill="${c}" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>
+                <path d="M14 56 C14 56 8 58 4 62 C2 64 1 67 3 69 C5 71 10 72 14 70 C18 68 28 64 38 62 L14 62 Z" fill="${c}" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>
+                <line x1="14" y1="56" x2="86" y2="56" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+                <circle cx="50" cy="18" r="3" fill="${c}" stroke="${c}" stroke-width="1"/>
+            </svg>`;
+        }
+        if (iconName === 'svg-capsule' || iconName === 'svg-capsule-5' || iconName === 'svg-capsule-10' || iconName === 'svg-capsule-box') {
+            const makeCap = (x, y, scale, color) => `
+                <g transform="translate(${x}, ${y}) scale(${scale})">
+                    <path d="M -12 -4 L -9 15 C -8 24, 8 24, 9 15 L 12 -4 Z" fill="${color}" />
+                    <rect x="-15" y="-10" width="30" height="6" rx="2" fill="#8A6046" />
+                    <line x1="-10.5" y1="12" x2="10.5" y2="12" />
+                    <line x1="-6" y1="0" x2="-4" y2="10" stroke="#FFFFFF" stroke-width="2" opacity="0.5" />
+                    <line x1="-10" y1="-7" x2="-2" y2="-7" stroke="#FFFFFF" stroke-width="2" opacity="0.5" />
+                </g>`;
+            const beanBadge = (y) => `
+                <g transform="translate(50, ${y}) scale(1.2)">
+                    <circle cx="0" cy="0" r="16" fill="#FFFFFF" />
+                    <g transform="rotate(-30)">
+                        <ellipse cx="0" cy="0" rx="7" ry="10" fill="#8A6046" />
+                        <path d="M -2 -6 C 2 -4, 2 0, 0 2 C -2 4, -2 8, 2 10" fill="none" stroke="#1A1A1A" stroke-width="2.5" />
+                    </g>
+                </g>`;
+
+            let contents = '';
+            let strokeW = 3.5;
+
+            if (iconName === 'svg-capsule') {
+                contents = makeCap(25, 40, 1.1, '#8CB4F5') +
+                           makeCap(75, 40, 1.1, '#C2E88D') +
+                           makeCap(50, 36, 1.25, '#E36262') +
+                           beanBadge(72);
+            } else if (iconName === 'svg-capsule-5') {
+                contents = makeCap(20, 36, 0.9, '#F2A65A') +
+                           makeCap(80, 36, 0.9, '#B39DDB') +
+                           makeCap(35, 41, 1.0, '#8CB4F5') +
+                           makeCap(65, 41, 1.0, '#C2E88D') +
+                           makeCap(50, 46, 1.15, '#E36262') +
+                           beanBadge(76);
+            } else if (iconName === 'svg-capsule-10') {
+                strokeW = 3.0; // Slightly thinner stroke for crowded pile
+                contents = makeCap(25, 25, 0.7, '#4DD0E1') +
+                           makeCap(42, 25, 0.7, '#FFF176') +
+                           makeCap(58, 25, 0.7, '#F06292') +
+                           makeCap(75, 25, 0.7, '#AED581') +
+                           makeCap(30, 35, 0.85, '#FFB74D') +
+                           makeCap(50, 35, 0.85, '#90A4AE') +
+                           makeCap(70, 35, 0.85, '#4DB6AC') +
+                           makeCap(38, 48, 1.0, '#8CB4F5') +
+                           makeCap(62, 48, 1.0, '#C2E88D') +
+                           makeCap(50, 60, 1.15, '#E36262') +
+                           beanBadge(85);
+            } else if (iconName === 'svg-capsule-box') {
+                const cColor = color || '#006837';
+                contents = `
+                    <!-- Right Face (Darker) -->
+                    <polygon points="65,45 85,35 85,65 65,75" fill="${cColor}" />
+                    <polygon points="65,45 85,35 85,65 65,75" fill="#000000" opacity="0.25" stroke="none" />
+
+                    <!-- Top Face -->
+                    <polygon points="45,35 65,25 85,35 65,45" fill="${cColor}" />
+                    <polygon points="45,35 65,25 85,35 65,45" fill="#FFFFFF" opacity="0.3" stroke="none" />
+
+                    <!-- Left Face (Front) -->
+                    <polygon points="45,35 65,45 65,75 45,65" fill="${cColor}" />
+                    <polygon points="45,35 65,45 65,75 45,65" fill="#000000" opacity="0.05" stroke="none" />
+                    
+                    <!-- Left Face Decorations (Logo) -->
+                    <g stroke="none">
+                        <g transform="translate(55, 60) scale(0.6)">
+                            <path d="M -12 -4 L -9 15 C -8 24, 8 24, 9 15 L 12 -4 Z" fill="#FFFFFF" opacity="0.7" />
+                            <rect x="-15" y="-10" width="30" height="6" rx="2" fill="#FFFFFF" opacity="0.7" />
+                        </g>
+                    </g>
+
+                    <!-- Loose capsules sitting in front of the box -->
+                    ${makeCap(32, 75, 0.9, '#F06292')}
+                    ${makeCap(48, 85, 1.1, '#FFB74D')}
+                `;
+            }
+
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit;">
+                <g stroke="#1A1A1A" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round">
+                    ${contents}
+                </g>
+            </svg>`;
+        }
+        if (iconName === 'svg-capsule-flat') {
+            const c = color || '#006837';
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit;">
+                <path d="M 12 18 L 88 18 A 6 6 0 0 1 94 24 L 94 28 A 6 6 0 0 1 88 34 L 12 34 A 6 6 0 0 1 6 28 L 6 24 A 6 6 0 0 1 12 18 Z" fill="${c}" />
+                <path d="M 22 38 L 32 85 C 33 93, 40 98, 50 98 C 60 98, 67 93, 68 85 L 78 38 Z
+                         M 50 47 C 59 47, 62 55, 62 65 C 62 75, 59 83, 50 83 C 41 83, 38 75, 38 65 C 38 55, 41 47, 50 47 Z" fill="${c}" fill-rule="evenodd" />
+                <path d="M 48 52 C 54 52, 54 60, 50 65 C 46 70, 46 78, 52 78" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" />
+            </svg>`;
+        }
+        if (iconName === 'svg-capsule-3d') {
+            const c = color || '#006837';
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 8px 10px rgba(0,0,0,0.25));">
+                <defs>
+                    <linearGradient id="coffeeShine_${c.replace('#','')}" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#000000" stop-opacity="0.5" />
+                        <stop offset="20%" stop-color="#ffffff" stop-opacity="0.9" />
+                        <stop offset="40%" stop-color="#ffffff" stop-opacity="0.1" />
+                        <stop offset="75%" stop-color="#000000" stop-opacity="0.7" />
+                        <stop offset="90%" stop-color="#ffffff" stop-opacity="0.4" />
+                        <stop offset="100%" stop-color="#000000" stop-opacity="0.6" />
+                    </linearGradient>
+                    <linearGradient id="foilLid_${c.replace('#','')}" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#f0f0f0" />
+                        <stop offset="50%" stop-color="#ffffff" />
+                        <stop offset="100%" stop-color="#a0a0a0" />
+                    </linearGradient>
+                </defs>
+                <g transform="rotate(-15 50 50) translate(0, 5)">
+                    <path d="M22 25 L32 78 C 32 92, 68 92, 68 78 L78 25 Z" fill="${c}" />
+                    <path d="M22 25 L32 78 C 32 92, 68 92, 68 78 L78 25 Z" fill="url(#coffeeShine_${c.replace('#','')})" />
+                    <ellipse cx="50" cy="25" rx="38" ry="10" fill="${c}" />
+                    <ellipse cx="50" cy="25" rx="38" ry="10" fill="url(#coffeeShine_${c.replace('#','')})" />
+                    <ellipse cx="50" cy="25" rx="34" ry="8" fill="url(#foilLid_${c.replace('#','')})" />
+                    <ellipse cx="50" cy="25" rx="26" ry="6" fill="none" stroke="#cccccc" stroke-width="1.5" />
+                    <ellipse cx="50" cy="25" rx="18" ry="4" fill="none" stroke="#ffffff" stroke-width="2" />
+                    <ellipse cx="50" cy="25" rx="10" ry="2" fill="none" stroke="#aaaaaa" stroke-width="1" />
+                </g>
+            </svg>`;
+        }
+        if (iconName === 'svg-capsule-outline') {
+            const c = color || '#006837';
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit;">
+                <path d="M 12 18 L 88 18 A 6 6 0 0 1 94 24 L 94 28 A 6 6 0 0 1 88 34 L 12 34 A 6 6 0 0 1 6 28 L 6 24 A 6 6 0 0 1 12 18 Z" fill="none" stroke="${c}" stroke-width="5" stroke-linejoin="round" />
+                <path d="M 22 34 L 32 85 C 33 93, 40 98, 50 98 C 60 98, 67 93, 68 85 L 78 34" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+                <ellipse cx="50" cy="62" rx="12" ry="18" fill="none" stroke="${c}" stroke-width="5" />
+                <path d="M 48 50 C 55 50, 55 60, 50 62 C 45 64, 45 74, 52 74" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" />
+            </svg>`;
+        }
+        const cls = getIconClass(iconName || 'fa-gift');
+        return `<i class="${cls}" style="color: ${color || '#006837'};"></i>`;
     };
 
     // Admin Mission Creation Logic
@@ -754,6 +923,346 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Switch to admin missions page and scroll to top
         showPage('admin-missions');
+        window.scrollTo(0, 0);
+    };
+
+    // Admin Prizes Logic
+    const prizesCollection = dbAvailable && dbInstance ? dbInstance.collection('custom_prizes') : null;
+    let sharedPrizeCache = [];
+
+    const getPrizeData = () => {
+        const localPrizes = JSON.parse(localStorage.getItem('moura_leite_prizes')) || [];
+        if (dbAvailable && sharedPrizeCache.length > 0) {
+            return sharedPrizeCache;
+        }
+        return localPrizes;
+    };
+
+    const seedDefaultPrizes = () => {
+        const SEED_VERSION = 'moura_leite_prizes_seeded_v1';
+        if (!localStorage.getItem(SEED_VERSION)) {
+            const defaults = [
+                { id: 'prize_caneca', name: 'Caneca Personalizada', points: 450, icon: 'fa-mug-hot', color: '#f39c12', active: true, order: 1, createdAt: new Date().toISOString() },
+                { id: 'prize_caderno', name: 'Caderno de Anotações', points: 300, icon: 'fa-book', color: '#1976d2', active: true, order: 2, createdAt: new Date().toISOString() },
+                { id: 'prize_garrafa', name: 'Garrafa Térmica', points: 650, icon: 'fa-bottle-water', color: '#2ecc71', active: true, order: 3, createdAt: new Date().toISOString() },
+                { id: 'prize_bone', name: 'Boné Moura Leite', points: 300, icon: 'svg-cap', color: '#9b59b6', active: true, order: 4, createdAt: new Date().toISOString() },
+                { id: 'prize_oculos', name: 'Óculos de Sol', points: 450, icon: 'fa-glasses', color: '#e74c3c', active: true, order: 5, createdAt: new Date().toISOString() }
+            ];
+            
+            let prizes = JSON.parse(localStorage.getItem('moura_leite_prizes')) || [];
+            defaults.forEach(d => {
+                const idx = prizes.findIndex(p => p.id === d.id);
+                if (idx === -1) {
+                    prizes.push(d);
+                }
+            });
+            localStorage.setItem('moura_leite_prizes', JSON.stringify(prizes));
+            localStorage.setItem(SEED_VERSION, 'true');
+            
+            if (dbAvailable && prizesCollection) {
+                defaults.forEach(async d => {
+                    try {
+                        const docRef = prizesCollection.doc(d.id);
+                        const docSnap = await docRef.get();
+                        if (!docSnap.exists) {
+                            await docRef.set(d, {merge: true});
+                        }
+                    } catch (e) {
+                        console.warn('Error seeding prize:', e);
+                    }
+                });
+            }
+        }
+    };
+
+    const subscribeSharedPrizes = () => {
+        if (!dbAvailable || !prizesCollection) return;
+        prizesCollection.orderBy('createdAt', 'asc').onSnapshot((snapshot) => {
+            if (!snapshot.empty) {
+                sharedPrizeCache = [];
+                snapshot.forEach((doc) => {
+                    sharedPrizeCache.push(doc.data());
+                });
+                localStorage.setItem('moura_leite_prizes', JSON.stringify(sharedPrizeCache));
+            }
+            renderCustomPrizes();
+            if (typeof renderAdminPrizesList === 'function') renderAdminPrizesList();
+        }, (error) => {
+            console.error('Error syncing shared prizes:', error);
+            renderCustomPrizes();
+            if (typeof renderAdminPrizesList === 'function') renderAdminPrizesList();
+        });
+    };
+
+    const registerPrizeFormListener = () => {
+        const form = document.getElementById('prize-form');
+        if (form && !form.hasListener) {
+            form.addEventListener('submit', handlePrizeSubmit);
+            
+            const iconSelect = document.getElementById('prize-icon');
+            const colorInput = document.getElementById('prize-color');
+            const imgInput = document.getElementById('prize-image');
+            const previewBox = document.getElementById('prize-preview');
+
+            const updatePreview = () => {
+                if (!previewBox) return;
+                const color = colorInput.value || '#006837';
+                
+                if (imgInput.files && imgInput.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewBox.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+                        form.dataset.imageB64 = e.target.result;
+                    };
+                    reader.readAsDataURL(imgInput.files[0]);
+                } else if (form.dataset.imageB64 && (!iconSelect.value || iconSelect.value === '')) {
+                    previewBox.innerHTML = `<img src="${form.dataset.imageB64}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+                } else {
+                    const iconValue = iconSelect.value;
+                    if (iconValue) {
+                        form.dataset.imageB64 = ''; 
+                    }
+                    previewBox.innerHTML = getIconHTML(iconValue || 'fa-gift', color);
+                }
+            };
+
+            if (iconSelect) iconSelect.addEventListener('change', () => { imgInput.value = ''; updatePreview(); });
+            if (colorInput) colorInput.addEventListener('input', updatePreview);
+            if (imgInput) imgInput.addEventListener('change', () => { iconSelect.value = ''; updatePreview(); });
+
+            const cancelBtn = document.getElementById('cancel-edit-prize-btn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    form.reset();
+                    if (document.getElementById('prize-desc')) document.getElementById('prize-desc').value = '';
+                    delete form.dataset.editingId;
+                    delete form.dataset.imageB64;
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    if (submitBtn) submitBtn.textContent = 'Cadastrar Prêmio';
+                    cancelBtn.classList.add('hidden');
+                    updatePreview();
+                });
+            }
+            form.hasListener = true;
+        }
+    };
+
+    const renderCustomPrizes = () => {
+        const gridContainer = document.getElementById('store-grid-container');
+        if (!gridContainer) return;
+        
+        gridContainer.querySelectorAll('.custom-prize-card').forEach(card => card.remove());
+
+        const prizes = getPrizeData()
+            .filter(p => p.active)
+            .sort((a, b) => (parseInt(a.order) || 0) - (parseInt(b.order) || 0));
+        
+        prizes.forEach(prize => {
+            const isBase64 = prize.image && prize.image.startsWith('data:image');
+            const imgHTML = isBase64 
+                ? `<div class="item-img"><img src="${prize.image}" style="max-width: 90%; max-height: 120px; object-fit: contain; border-radius: 8px;"></div>`
+                : `<div class="item-img">${getIconHTML(prize.icon || 'fa-gift', prize.color || '#006837')}</div>`;
+            
+            const html = `
+                <div class="store-card custom-prize-card">
+                    ${imgHTML}
+                    <h3>${prize.name}</h3>
+                    ${prize.desc ? `<p class="store-card-desc">${prize.desc}</p>` : ''}
+                    <div class="item-footer">
+                        <span class="price">${prize.points} pts</span>
+                        <button class="btn-buy" onclick="buyItem('${prize.name}', ${prize.points})">Trocar</button>
+                    </div>
+                </div>
+            `;
+            const boostCard = document.getElementById('boost-card');
+            if (boostCard) {
+                boostCard.insertAdjacentHTML('beforebegin', html);
+            } else {
+                gridContainer.insertAdjacentHTML('beforeend', html);
+            }
+        });
+    };
+
+    const renderAdminPrizesList = () => {
+        const body = document.getElementById('admin-prizes-list-body');
+        if (!body) return;
+
+        const prizes = getPrizeData().sort((a, b) => (parseInt(a.order) || 0) - (parseInt(b.order) || 0));
+        if (prizes.length === 0) {
+            body.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">Nenhum prêmio cadastrado.</td></tr>';
+            return;
+        }
+
+        body.innerHTML = prizes.map(prize => `
+            <tr>
+                <td><strong>${prize.order || 0}</strong></td>
+                <td><strong>${prize.name}</strong></td>
+                <td>${prize.points} pts</td>
+                <td><span class="status-badge ${prize.active ? 'status-unlocked' : 'status-locked'}">${prize.active ? 'Ativo' : 'Inativo'}</span></td>
+                <td>
+                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                        <button onclick="editPrize('${prize.id}')" class="btn-buy" style="padding:4px 8px; font-size:10px;">Editar</button>
+                        <button onclick="deletePrize('${prize.id}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#d32f2f;">Excluir</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    };
+
+    const handlePrizeSubmit = async (e) => {
+        e.preventDefault();
+        
+        const form = document.getElementById('prize-form');
+        const editingId = form.dataset.editingId;
+        const name = document.getElementById('prize-name').value;
+        const points = parseInt(document.getElementById('prize-points').value);
+        const desc = document.getElementById('prize-desc') ? document.getElementById('prize-desc').value : '';
+        const icon = document.getElementById('prize-icon').value;
+        const color = document.getElementById('prize-color').value;
+        const active = document.getElementById('prize-active').checked;
+        const order = parseInt(document.getElementById('prize-order').value) || 0;
+        const imageB64 = form.dataset.imageB64 || null;
+
+        try {
+            const prizes = JSON.parse(localStorage.getItem('moura_leite_prizes')) || [];
+            
+            const prizeObj = {
+                name,
+                points,
+                desc,
+                icon,
+                color,
+                active,
+                order,
+                updatedAt: new Date().toISOString()
+            };
+            if (imageB64) prizeObj.image = imageB64;
+
+            if (editingId) {
+                const index = prizes.findIndex(p => p.id === editingId);
+                if (index !== -1) {
+                    const updated = { ...prizes[index], ...prizeObj };
+                    
+                    if (imageB64) {
+                        updated.image = imageB64;
+                        delete updated.icon;
+                    } else if (icon) {
+                        updated.icon = icon;
+                        delete updated.image;
+                    }
+
+                    const hadImage = !!prizes[index].image;
+                    const hadIcon = !!prizes[index].icon;
+
+                    // remove undefined
+                    Object.keys(updated).forEach(key => updated[key] === undefined && delete updated[key]);
+
+                    prizes[index] = updated;
+                    localStorage.setItem('moura_leite_prizes', JSON.stringify(prizes));
+                    
+                    renderCustomPrizes();
+                    if (typeof renderAdminPrizesList === 'function') renderAdminPrizesList();
+
+                    if (dbAvailable && prizesCollection) {
+                        try {
+                            const dbUpdate = { ...updated };
+                            if (icon && hadImage) {
+                                dbUpdate.image = firebase.firestore.FieldValue.delete();
+                            } else if (imageB64 && hadIcon) {
+                                dbUpdate.icon = firebase.firestore.FieldValue.delete();
+                            }
+                            await prizesCollection.doc(editingId).set(dbUpdate, { merge: true });
+                        } catch (e) {
+                            console.warn("Firestore error, mas salvo localmente:", e);
+                        }
+                    }
+                    alert('Prêmio atualizado com sucesso!');
+                }
+                delete form.dataset.editingId;
+                const submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.textContent = 'Cadastrar Prêmio';
+                const cancelBtn = document.getElementById('cancel-edit-prize-btn');
+                if (cancelBtn) cancelBtn.classList.add('hidden');
+            } else {
+                const newPrize = {
+                    id: Date.now().toString(),
+                    ...prizeObj,
+                    createdAt: new Date().toISOString()
+                };
+                prizes.push(newPrize);
+                localStorage.setItem('moura_leite_prizes', JSON.stringify(prizes));
+                
+                renderCustomPrizes();
+                if (typeof renderAdminPrizesList === 'function') renderAdminPrizesList();
+
+                if (dbAvailable && prizesCollection) {
+                    try {
+                        await prizesCollection.doc(newPrize.id).set(newPrize);
+                    } catch (e) {
+                        console.warn("Firestore error, mas salvo localmente:", e);
+                    }
+                }
+                alert('Prêmio cadastrado com sucesso!');
+            }
+
+            form.reset();
+            document.getElementById('prize-color').value = '#006837';
+            document.getElementById('prize-icon').value = 'fa-gift';
+            delete form.dataset.imageB64;
+            const previewBox = document.getElementById('prize-preview');
+            if (previewBox) previewBox.innerHTML = '<i class="fa-solid fa-gift" style="color: #006837;"></i>';
+            
+            renderCustomPrizes();
+            if (typeof renderAdminPrizesList === 'function') renderAdminPrizesList();
+
+        } catch (error) {
+            console.error('Erro ao salvar prêmio:', error);
+            alert('Erro ao salvar prêmio: ' + error.message);
+        }
+    };
+
+    window.deletePrize = async (prizeId) => {
+        if (!confirm('Deseja excluir este prêmio permanentemente?')) return;
+        const prizes = JSON.parse(localStorage.getItem('moura_leite_prizes')) || [];
+        const updated = prizes.filter(p => p.id !== prizeId);
+        localStorage.setItem('moura_leite_prizes', JSON.stringify(updated));
+        if (dbAvailable && prizesCollection) {
+            try { await prizesCollection.doc(prizeId).delete(); } catch(e){}
+        }
+        renderCustomPrizes();
+        if (typeof renderAdminPrizesList === 'function') renderAdminPrizesList();
+        alert('Prêmio excluído com sucesso.');
+    };
+
+    window.editPrize = async (prizeId) => {
+        const prizes = JSON.parse(localStorage.getItem('moura_leite_prizes')) || [];
+        const prize = prizes.find(p => p.id === prizeId);
+        if (!prize) return alert('Prêmio não encontrado.');
+
+        document.getElementById('prize-name').value = prize.name || '';
+        document.getElementById('prize-points').value = prize.points || '';
+        if (document.getElementById('prize-desc')) document.getElementById('prize-desc').value = prize.desc || '';
+        document.getElementById('prize-icon').value = prize.icon || '';
+        document.getElementById('prize-color').value = prize.color || '#006837';
+        document.getElementById('prize-active').checked = prize.active !== false;
+        document.getElementById('prize-order').value = prize.order || 0;
+
+        const form = document.getElementById('prize-form');
+        form.dataset.editingId = prize.id;
+        
+        if (prize.image) {
+            form.dataset.imageB64 = prize.image;
+        }
+
+        const iconSelect = document.getElementById('prize-icon');
+        if (iconSelect) iconSelect.dispatchEvent(new Event('change'));
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.textContent = 'Salvar Alterações';
+        const cancelBtn = document.getElementById('cancel-edit-prize-btn');
+        if (cancelBtn) cancelBtn.classList.remove('hidden');
+
+        showPage('admin-prizes');
         window.scrollTo(0, 0);
     };
 
@@ -1684,12 +2193,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderNotifications();
 
+    // Save evidence (photo/link) to separate Firestore collection to avoid 1MB doc limit
+    const saveEvidence = async (evidenceData) => {
+        if (!dbAvailable) return null;
+        try {
+            const evidenceId = Date.now().toString() + '_' + Math.random().toString(36).substr(2, 6);
+            await db.collection('mission_evidence').doc(evidenceId).set({
+                id: evidenceId,
+                userEmail: storedUser.email,
+                userName: storedUser.username,
+                photo: evidenceData.photo || null,
+                link: evidenceData.link || null,
+                missionName: evidenceData.missionName || '',
+                createdAt: new Date().toISOString(),
+                serverTime: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            console.log('Evidência salva separadamente:', evidenceId);
+            return evidenceId;
+        } catch (e) {
+            console.error('Erro ao salvar evidência:', e);
+            return null;
+        }
+    };
+
     const saveAndSync = async () => {
         try {
             // Ensure points are synced as numbers
             storedUser.points = parseInt(userPoints) || 0;
             
-            // Save locally
+            // Save locally (with photos for local admin viewing)
             localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
             
             // Update global list locally for immediate feedback
@@ -1702,7 +2234,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Sync to Firestore if available
             if (dbAvailable && storedUser.email) {
-                await db.collection('users').doc(storedUser.email).set(storedUser, { merge: true });
+                // CRITICAL FIX: Strip base64 photo data from history before sending to Firestore
+                // Firestore has a 1MB document limit. Base64 photos can be 1-5MB each.
+                // Without this, all writes fail silently after 1-2 photo uploads.
+                const cleanUser = JSON.parse(JSON.stringify(storedUser));
+                if (cleanUser.history && Array.isArray(cleanUser.history)) {
+                    cleanUser.history = cleanUser.history.map(tx => {
+                        const cleanTx = { ...tx };
+                        if (cleanTx.photo && cleanTx.photo.startsWith('data:')) {
+                            cleanTx.hasPhoto = true;
+                            delete cleanTx.photo; // Remove base64 data
+                        }
+                        return cleanTx;
+                    });
+                }
+                // Also strip notifications to reduce document size
+                delete cleanUser.notifications;
+                
+                await db.collection('users').doc(storedUser.email).set(cleanUser, { merge: true });
                 console.log('Sincronização com Firestore concluída.');
             }
         } catch (error) {
@@ -1757,9 +2306,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateRanking();
                 updateUIWithUser();
                 updateCheckinUI();
+                // IMPORTANT: Fire confetti BEFORE alert, because alert() blocks the JS thread
                 triggerCelebration();
                 addNotification(`Check-in diário realizado! +${earned} pts.`);
-                alert(`Parabéns! Você ganhou ${earned} ponto(s) pelo seu check-in diário.`);
+                setTimeout(() => {
+                    alert(`Parabéns! Você ganhou ${earned} ponto(s) pelo seu check-in diário.`);
+                }, 300);
             }
         });
     });
@@ -1906,12 +2458,15 @@ document.addEventListener('DOMContentLoaded', () => {
         updateRanking();
         updateUIWithUser();
         renderCustomMissions();
+        // IMPORTANT: Fire confetti BEFORE alert, because alert() blocks the JS thread
         triggerCelebration();
         addNotification(`${missionName} concluída! +${earned} pts.`);
-        alert(`Parabéns! Você ganhou ${earned} ponto(s) por completar: ${missionName}`);
+        setTimeout(() => {
+            alert(`Parabéns! Você ganhou ${earned} ponto(s) por completar: ${missionName}`);
+        }, 300);
     };
 
-    const completeMissionWithPhoto = (missionId, missionName, missionPoints, photoData, lastKey, dateKey) => {
+    const completeMissionWithPhoto = async (missionId, missionName, missionPoints, photoData, lastKey, dateKey) => {
         const multiplier = getCurrentMultiplier();
         const earned = Math.floor(missionPoints * multiplier);
         const serverTimestamp = getServerTime();
@@ -1935,6 +2490,9 @@ document.addEventListener('DOMContentLoaded', () => {
             storedUser.gamesCount = (storedUser.gamesCount || 0) + 1;
         }
         
+        // Save photo evidence to separate Firestore collection (avoids 1MB doc limit)
+        const evidenceId = await saveEvidence({ photo: photoData, missionName: missionName });
+        
         const transaction = {
             user: storedUser.username,
             item: `Missão: ${missionName} (+${earned} pts)`,
@@ -1942,6 +2500,8 @@ document.addEventListener('DOMContentLoaded', () => {
             time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
             status: 'Validando',
             photo: photoData,
+            evidenceId: evidenceId || null,
+            hasPhoto: true,
             serverTime: serverTimestamp
         };
 
@@ -1956,14 +2516,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
         saveAndSync();
         
-        // Sync with global list (redundant if saveAndSync works but kept for safety)
-        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
-        const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
-        if (userIndex !== -1) {
-            allUsers[userIndex].points = userPoints;
-            localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
-        }
-        
         // Log successful mission
         logMissionAttempt(storedUser.email, missionId, missionName, true, serverTimestamp);
         
@@ -1971,9 +2523,13 @@ document.addEventListener('DOMContentLoaded', () => {
         updateRanking();
         updateUIWithUser();
         renderCustomMissions();
+        
+        // IMPORTANT: Fire confetti BEFORE alert, because alert() blocks the JS thread
         triggerCelebration();
         addNotification(`${missionName} enviada para validação! +${earned} pts.`);
-        alert(`Foto enviada! Você ganhou ${earned} pontos por: ${missionName}`);
+        setTimeout(() => {
+            alert(`Foto enviada! Você ganhou ${earned} pontos por: ${missionName}`);
+        }, 300);
     };
 
     const completeMissionWithLink = (missionId, missionName, missionPoints, link, lastKey, dateKey) => {
@@ -2032,9 +2588,12 @@ document.addEventListener('DOMContentLoaded', () => {
         updateRanking();
         updateUIWithUser();
         renderCustomMissions();
+        // IMPORTANT: Fire confetti BEFORE alert, because alert() blocks the JS thread
         triggerCelebration();
         addNotification(`${missionName} enviada para validação! +${earned} pts.`);
-        alert(`Link enviado! Você ganhou ${earned} pontos por: ${missionName}`);
+        setTimeout(() => {
+            alert(`Link enviado! Você ganhou ${earned} pontos por: ${missionName}`);
+        }, 300);
     };
 
     window.viewPhoto = (photoData) => {
@@ -2104,11 +2663,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     };
 
-    // NÃO chamar saveAndSync() no carregamento — Firebase é a fonte da verdade.
-    // Os pontos só devem ser enviados ao Firebase quando o usuário COMPLETAR uma ação.
     updateCheckinUI();
     updatePointsDisplay();
     updateRanking();
     updateUIWithUser();
     startCountdown();
+    
+    // Custom Missions & Prizes Initialization
+    seedDefaultMissions();
+    seedDefaultPrizes();
+    subscribeSharedMissions();
+    registerMissionFormListener();
+    subscribeSharedPrizes();
+    registerPrizeFormListener();
 });

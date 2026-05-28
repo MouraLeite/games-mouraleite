@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoria de Pontos | Moura Leite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
+        h1 { text-align: center; margin-bottom: 10px; color: #00e676; }
+        .subtitle { text-align: center; color: #aaa; margin-bottom: 30px; font-size: 14px; }
+        .controls { text-align: center; margin-bottom: 30px; }
+        .btn { padding: 12px 28px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; margin: 5px; transition: all 0.2s; }
+        .btn-audit { background: #1976d2; color: white; }
+        .btn-audit:hover { background: #1565c0; }
+        .btn-fix { background: #e65100; color: white; }
+        .btn-fix:hover { background: #bf360c; }
+        .btn-fix:disabled { background: #555; cursor: not-allowed; }
+        .btn-export { background: #2e7d32; color: white; }
+        .btn-export:hover { background: #1b5e20; }
+        #status { text-align: center; padding: 15px; margin-bottom: 20px; border-radius: 8px; display: none; }
+        .status-info { background: #0d47a1; }
+        .status-success { background: #1b5e20; }
+        .status-error { background: #b71c1c; }
+        .status-warning { background: #e65100; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #16213e; padding: 12px 8px; text-align: left; font-size: 13px; position: sticky; top: 0; }
+        td { padding: 10px 8px; border-bottom: 1px solid #333; font-size: 13px; }
+        tr:hover { background: #16213e44; }
+        .ok { color: #00e676; font-weight: bold; }
+        .divergent { color: #ff5252; font-weight: bold; background: #ff525215; }
+        .detail-list { font-size: 11px; color: #aaa; max-height: 150px; overflow-y: auto; margin-top: 5px; }
+        .detail-list div { padding: 2px 0; border-bottom: 1px solid #222; }
+        .detail-list .earned { color: #69f0ae; }
+        .detail-list .spent { color: #ff8a80; }
+        .summary { display: flex; gap: 20px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+        .summary-card { background: #16213e; padding: 15px 25px; border-radius: 10px; text-align: center; min-width: 150px; }
+        .summary-card .number { font-size: 28px; font-weight: bold; }
+        .summary-card .label { font-size: 12px; color: #aaa; margin-top: 5px; }
+        .ok-num { color: #00e676; }
+        .div-num { color: #ff5252; }
+        .total-num { color: #42a5f5; }
+        #loading { display: none; text-align: center; padding: 40px; }
+        .spinner { border: 4px solid #333; border-top: 4px solid #00e676; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <h1>🔍 Auditoria de Pontos</h1>
+    <p class="subtitle">Ferramenta de diagnóstico para verificar e corrigir divergências de pontos dos colaboradores no Firebase.</p>
+
+    <div class="controls">
+        <button class="btn btn-audit" onclick="runAudit()">🔎 Executar Auditoria</button>
+        <button class="btn btn-fix" id="btn-fix" onclick="fixAll()" disabled>🔧 Corrigir Todas as Divergências</button>
+        <button class="btn btn-export" id="btn-export" onclick="exportCSV()" style="display:none">📥 Exportar CSV</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Conectando ao Firebase e analisando dados...</p>
+    </div>
+
+    <div class="summary" id="summary" style="display:none"></div>
+
+    <div id="results"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        let auditResults = [];
+
+        // Valores conhecidos de missões do sistema
+        const KNOWN_MISSION_POINTS = {
+            'Check-in Diário': 1,
+            'Integração entre Times': 5,
+            'Café de Integração': 5,      // novo nome
+            'Almoço Moura Leite': 5,      // nome antigo
+            'Reunião de Integração': 8,
+            'Embaixador Digital': 15,
+            'Engajamento Viva Engage': 12,
+            'Dinâmica de Jogos': 20
+        };
+
+        function showStatus(msg, type) {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = 'status-' + type;
+            el.style.display = 'block';
+        }
+
+        function parsePointsFromItem(itemText, customMissionPoints = {}) {
+            // Formato novo: "Missão: Check-in Diário (+1 pts)" ou "Caneca (-450 pts)"
+            const earnedMatch = itemText.match(/\(\+(\d+)\s*pts?\)/);
+            if (earnedMatch) return parseInt(earnedMatch[1]);
+
+            const spentMatch = itemText.match(/\(-(\d+)\s*pts?\)/);
+            if (spentMatch) return -parseInt(spentMatch[1]);
+
+            // Formato antigo: "Missão: Check-in Diário" (sem pontos no texto)
+            // Identifica missões conhecidas
+            if (itemText.startsWith('Missão:')) {
+                const missionPart = itemText.replace('Missão: ', '').trim();
+                for (const [name, pts] of Object.entries(KNOWN_MISSION_POINTS)) {
+                    if (missionPart.includes(name)) return pts;
+                }
+                
+                // Fallback para missões customizadas
+                for (const [name, pts] of Object.entries(customMissionPoints)) {
+                    if (missionPart.includes(name)) return parseInt(pts);
+                }
+                
+                // Missão customizada desconhecida - não podemos determinar os pontos
+                return null;
+            }
+
+            // Formato antigo de compra na loja: "Caneca", "Caderno", etc. (sem pontos no texto)
+            // Items da loja com preços conhecidos
+            const KNOWN_ITEMS = {
+                'Caneca': -450,
+                'Caderno': -300,
+                'Garrafa': -650,
+                'Boné': -300,
+                'Óculos de Sol': -450,
+                'Boost de Pontos 2x': -50
+            };
+            for (const [name, pts] of Object.entries(KNOWN_ITEMS)) {
+                if (itemText.includes(name)) return pts;
+            }
+
+            return null; // Não conseguimos determinar
+        }
+
+        async function runAudit() {
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const summary = document.getElementById('summary');
+            
+            loading.style.display = 'block';
+            results.innerHTML = '';
+            summary.style.display = 'none';
+            auditResults = [];
+
+            showStatus('Conectando ao Firebase e carregando dados de todos os usuários...', 'info');
+
+            try {
+                const usersSnap = await db.collection("users").get();
+                // Fix: correct collection name for custom missions
+                const missionsSnap = await db.collection("custom_missions").get();
+
+                // Carrega pontos das missões customizadas do Firebase
+                const customMissionPoints = {};
+                missionsSnap.forEach(doc => {
+                    const m = doc.data();
+                    customMissionPoints[m.name] = m.points;
+                });
+
+                let totalOk = 0;
+                let totalDiv = 0;
+                let totalUsers = 0;
+
+                let tableHTML = `<table>
+                    <thead><tr>
+                        <th>#</th>
+                        <th>Colaborador</th>
+                        <th>E-mail</th>
+                        <th>Pontos no Firebase</th>
+                        <th>Pontos Calculados</th>
+                        <th>Diferença</th>
+                        <th>Status</th>
+                        <th>Detalhes do Histórico</th>
+                    </tr></thead><tbody>`;
+
+                let index = 0;
+                usersSnap.forEach(doc => {
+                    const user = doc.data();
+                    if (user.email === 'admin@mouraleite.com.br') return;
+
+                    totalUsers++;
+                    index++;
+                    const history = user.history || [];
+                    let calculatedPoints = 0;
+                    let unknownCount = 0;
+                    let details = [];
+
+                    history.forEach((tx, i) => {
+                        const pts = parsePointsFromItem(tx.item || '', customMissionPoints);
+                        if (pts !== null) {
+                            calculatedPoints += pts;
+                            const sign = pts >= 0 ? '+' : '';
+                            const cls = pts >= 0 ? 'earned' : 'spent';
+                            details.push(`<div class="${cls}">${tx.date || '??'} | ${tx.item} → ${sign}${pts} pts</div>`);
+                        } else {
+                            unknownCount++;
+                            details.push(`<div style="color:#ffd54f">⚠ ${tx.date || '??'} | ${tx.item} → Pts DESCONHECIDOS (missão customizada sem valor registrado)</div>`);
+                        }
+                    });
+
+                    const firebasePoints = user.points || 0;
+                    const diff = firebasePoints - calculatedPoints;
+                    const isDivergent = diff !== 0 && unknownCount === 0;
+                    const isUncertain = unknownCount > 0;
+
+                    if (isDivergent) totalDiv++;
+                    else if (!isUncertain) totalOk++;
+
+                    let statusText, statusClass;
+                    if (isUncertain) {
+                        statusText = `⚠️ Incerto (${unknownCount} missões sem valor)`;
+                        statusClass = 'style="color:#ffd54f"';
+                    } else if (isDivergent) {
+                        statusText = '❌ DIVERGENTE';
+                        statusClass = 'class="divergent"';
+                    } else {
+                        statusText = '✅ OK';
+                        statusClass = 'class="ok"';
+                    }
+
+                    auditResults.push({
+                        email: user.email,
+                        username: user.username,
+                        firebasePoints,
+                        calculatedPoints,
+                        diff,
+                        isDivergent,
+                        isUncertain,
+                        unknownCount,
+                        historyCount: history.length
+                    });
+
+                    const detailsHTML = details.length > 0
+                        ? `<div class="detail-list">${details.join('')}</div>`
+                        : '<span style="color:#777">Sem histórico</span>';
+
+                    tableHTML += `<tr ${isDivergent ? 'class="divergent"' : ''}>
+                        <td>${index}</td>
+                        <td>${user.username || '(sem nome)'}</td>
+                        <td>${user.email}</td>
+                        <td>${firebasePoints}</td>
+                        <td>${calculatedPoints}${isUncertain ? ' (parcial)' : ''}</td>
+                        <td>${diff !== 0 ? (diff > 0 ? '+' : '') + diff : '0'}</td>
+                        <td ${statusClass}>${statusText}</td>
+                        <td>${detailsHTML}</td>
+                    </tr>`;
+                });
+
+                tableHTML += '</tbody></table>';
+
+                summary.innerHTML = `
+                    <div class="summary-card"><div class="number total-num">${totalUsers}</div><div class="label">Total de Usuários</div></div>
+                    <div class="summary-card"><div class="number ok-num">${totalOk}</div><div class="label">OK ✅</div></div>
+                    <div class="summary-card"><div class="number div-num">${totalDiv}</div><div class="label">Divergentes ❌</div></div>
+                `;
+                summary.style.display = 'flex';
+
+                results.innerHTML = tableHTML;
+
+                if (totalDiv > 0) {
+                    document.getElementById('btn-fix').disabled = false;
+                    showStatus(`Auditoria finalizada. ${totalDiv} divergência(s) encontrada(s) em ${totalUsers} usuários. Clique em "Corrigir" para ajustar.`, 'warning');
+                } else {
+                    showStatus(`Auditoria finalizada. Todos os ${totalUsers} usuários estão com pontos corretos! 🎉`, 'success');
+                }
+
+                document.getElementById('btn-export').style.display = 'inline-block';
+                loading.style.display = 'none';
+
+            } catch (error) {
+                console.error('Erro na auditoria:', error);
+                showStatus(`Erro ao acessar o Firebase: ${error.message}`, 'error');
+                loading.style.display = 'none';
+            }
+        }
+
+        async function fixAll() {
+            const divergent = auditResults.filter(r => r.isDivergent);
+            if (divergent.length === 0) {
+                showStatus('Nenhuma divergência para corrigir.', 'info');
+                return;
+            }
+
+            if (!confirm(`⚠️ Você está prestes a corrigir os pontos de ${divergent.length} colaborador(es) no Firebase.\n\nOs pontos serão recalculados com base no histórico de missões.\n\nDeseja continuar?`)) return;
+
+            const btn = document.getElementById('btn-fix');
+            btn.disabled = true;
+            btn.textContent = '⏳ Corrigindo...';
+
+            showStatus('Aplicando correções no Firebase...', 'info');
+
+            let fixedCount = 0;
+            let errorCount = 0;
+
+            for (const user of divergent) {
+                try {
+                    await db.collection("users").doc(user.email).update({ points: user.calculatedPoints });
+                    fixedCount++;
+                    console.log(`✅ ${user.username} (${user.email}): ${user.firebasePoints} → ${user.calculatedPoints}`);
+                } catch (error) {
+                    errorCount++;
+                    console.error(`❌ Erro ao corrigir ${user.email}:`, error);
+                }
+            }
+
+            if (errorCount === 0) {
+                showStatus(`✅ Correção concluída! ${fixedCount} usuário(s) corrigido(s) com sucesso. Execute a auditoria novamente para confirmar.`, 'success');
+            } else {
+                showStatus(`⚠️ Correção parcial: ${fixedCount} corrigido(s), ${errorCount} com erro. Verifique o console.`, 'warning');
+            }
+
+            btn.textContent = '🔧 Corrigir Todas as Divergências';
+            btn.disabled = true; // Fica desabilitado até rodar auditoria novamente
+        }
+
+        function exportCSV() {
+            if (auditResults.length === 0) return;
+
+            let csv = 'Colaborador,Email,Pontos Firebase,Pontos Calculados,Diferença,Status,Missões no Histórico\n';
+            auditResults.forEach(r => {
+                const status = r.isUncertain ? 'Incerto' : (r.isDivergent ? 'DIVERGENTE' : 'OK');
+                csv += `"${r.username}","${r.email}",${r.firebasePoints},${r.calculatedPoints},${r.diff},"${status}",${r.historyCount}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `auditoria_pontos_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
