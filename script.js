@@ -288,7 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button onclick="editUser('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px;">Editar</button>
                             <button onclick="resetUserPassword('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#f39c12;">Resetar Senha</button>
                             <button onclick="toggleUserStatus('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#666;">${user.disabled ? 'Ativar' : 'Desativar'}</button>
-                            ${user.email !== 'admin@mouraleite.com.br' ? `<button onclick="deleteUser('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#d32f2f;">Excluir</button>` : ''}
+                            ${user.email !== 'admin@mouraleite.com.br' ? `
+                            <button onclick="(function(){ var m=prompt('ID da missão para resetar o cooldown:\\n\\nsys_lunch = Café de Integração\\nsys_reuniao = Reunião de Integração\\nsys_jogos = Dinâmica de Jogos\\nsys_checkin = Check-in Diário\\nsys_embaixador = Embaixador Digital\\nsys_vivaengage = Viva Engage\\n\\n(ou o ID de uma missão personalizada)'); if(m && m.trim()) adminResetMission('${user.email}', m.trim()); })()" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#1976d2;">Resetar Missão</button>
+                            <button onclick="deleteUser('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#d32f2f;">Excluir</button>` : ''}
                         </div>
                     </td>
                 </tr>
@@ -2016,6 +2018,74 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // ==========================================
+    // ADMIN: Reset Mission Cooldown for a User
+    // ==========================================
+    // Clears the completion flag of a mission for a specific user,
+    // allowing them to complete it again in the same period.
+    // Usage via console: adminResetMission('email@usuario.com', 'sys_lunch')
+    // Common mission IDs: sys_lunch, sys_reuniao, sys_jogos, sys_checkin,
+    //                     sys_embaixador, sys_vivaengage, or any custom mission ID.
+    window.adminResetMission = async (userEmail, missionId) => {
+        if (storedUser.email !== 'admin@mouraleite.com.br') {
+            return alert('Apenas o administrador pode executar esta ação.');
+        }
+        if (!userEmail || !missionId) {
+            return alert('Uso: adminResetMission("email@usuario.com", "idDaMissao")');
+        }
+
+        const frequencyKeyMap = {
+            sys_checkin:     ['lastCheckIn',         'lastCustomDaily_sys_checkin'],
+            sys_lunch:       ['lastLunchWeek',        'lastCustomWeekly_sys_lunch'],
+            sys_reuniao:     ['lastReuniaoWeek',      'lastCustomWeekly_sys_reuniao'],
+            sys_jogos:       ['lastGamesWeek',        'lastCustomWeekly_sys_jogos'],
+            sys_embaixador:  ['lastLinkedInMonth',    'lastCustomMonthly_sys_embaixador'],
+            sys_vivaengage:  ['lastVivaEngageMonth',  'lastCustomMonthly_sys_vivaengage'],
+        };
+
+        // Build the list of fields to clear
+        const fieldsToClear = {};
+        if (frequencyKeyMap[missionId]) {
+            frequencyKeyMap[missionId].forEach(key => { fieldsToClear[key] = null; });
+        } else {
+            // For custom missions, try all frequency variants
+            ['lastCustomDaily_', 'lastCustomWeekly_', 'lastCustomMonthly_'].forEach(prefix => {
+                fieldsToClear[prefix + missionId] = null;
+            });
+        }
+
+        if (!confirm(`Resetar cooldown da missão "${missionId}" para ${userEmail}?`)) return;
+
+        try {
+            if (dbAvailable) {
+                // Use FieldValue.delete() to fully remove the field from Firestore
+                const updates = {};
+                Object.keys(fieldsToClear).forEach(k => {
+                    updates[k] = firebase.firestore.FieldValue.delete();
+                });
+                await db.collection('users').doc(userEmail).update(updates);
+            }
+
+            // Also clear from localStorage for the currently logged-in user (if it's them)
+            const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+            const idx = allUsers.findIndex(u => u.email === userEmail);
+            if (idx !== -1) {
+                Object.keys(fieldsToClear).forEach(k => { delete allUsers[idx][k]; });
+                localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+            }
+            if (storedUser.email === userEmail) {
+                Object.keys(fieldsToClear).forEach(k => { delete storedUser[k]; });
+                localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+                renderCustomMissions();
+            }
+
+            alert(`✅ Cooldown da missão "${missionId}" resetado para ${userEmail}!\nO usuário já pode completá-la novamente.`);
+        } catch (err) {
+            console.error('Erro ao resetar cooldown:', err);
+            alert('Erro ao resetar cooldown. Veja o console para detalhes.');
+        }
+    };
+
     // History Rendering
     const renderHistory = () => {
         const historyBody = document.querySelector('#historico-page .history-table tbody');
@@ -2485,66 +2555,91 @@ document.addEventListener('DOMContentLoaded', () => {
         const multiplier = getCurrentMultiplier();
         const earned = Math.floor(missionPoints * multiplier);
         const serverTimestamp = getServerTime();
-        
-        userPoints += earned;
-        storedUser.points = userPoints;
-        storedUser[lastKey] = dateKey;
-        storedUser.lastMissionTime = serverTimestamp;
 
-        // Ensure system keys are updated if mission is a system mission
-        if (missionId === 'sys_lunch') {
-            storedUser.lastLunchWeek = currentWeek;
-            storedUser.lunchCount = (storedUser.lunchCount || 0) + 1;
-        }
-        if (missionId === 'sys_reuniao') {
-            storedUser.lastReuniaoWeek = currentWeek;
-            storedUser.reuniaoCount = (storedUser.reuniaoCount || 0) + 1;
-        }
-        if (missionId === 'sys_jogos') {
-            storedUser.lastGamesWeek = currentWeek;
-            storedUser.gamesCount = (storedUser.gamesCount || 0) + 1;
-        }
-        
-        // Save photo evidence to separate Firestore collection (avoids 1MB doc limit)
-        const evidenceId = await saveEvidence({ photo: photoData, missionName: missionName });
-        
-        const transaction = {
-            user: storedUser.username,
-            item: `Missão: ${missionName} (+${earned} pts)`,
-            date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
-            time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            status: 'Validando',
-            photo: '[EVIDENCIA_SALVA]', // Evita o limite de 5MB do localStorage (e travamento no upload)
-            evidenceId: evidenceId || null,
-            hasPhoto: true,
-            serverTime: serverTimestamp
-        };
+        try {
+            userPoints += earned;
+            storedUser.points = userPoints;
+            storedUser[lastKey] = dateKey;
+            storedUser.lastMissionTime = serverTimestamp;
 
-        if (!storedUser.history) storedUser.history = [];
-        storedUser.history.unshift(transaction);
-        
-        // Global Sync
-        const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-        globalHistory.unshift(transaction);
-        localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-        
-        localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
-        saveAndSync();
-        
-        // Log successful mission
-        logMissionAttempt(storedUser.email, missionId, missionName, true, serverTimestamp);
-        
-        updatePointsDisplay();
-        updateRanking();
-        updateUIWithUser();
-        renderCustomMissions();
-        
-        // IMPORTANT: Fire confetti BEFORE alert, because alert() blocks the JS thread
-        triggerCelebration();
-        addNotification(`${missionName} enviada para validação! +${earned} pts.`);
-        setTimeout(() => {
-            alert(`Foto enviada! Você ganhou ${earned} pontos por: ${missionName}`);
-        }, 300);
+            // Ensure system keys are updated if mission is a system mission
+            if (missionId === 'sys_lunch') {
+                storedUser.lastLunchWeek = currentWeek;
+                storedUser.lunchCount = (storedUser.lunchCount || 0) + 1;
+            }
+            if (missionId === 'sys_reuniao') {
+                storedUser.lastReuniaoWeek = currentWeek;
+                storedUser.reuniaoCount = (storedUser.reuniaoCount || 0) + 1;
+            }
+            if (missionId === 'sys_jogos') {
+                storedUser.lastGamesWeek = currentWeek;
+                storedUser.gamesCount = (storedUser.gamesCount || 0) + 1;
+            }
+
+            // Save photo evidence to separate Firestore collection (avoids 1MB doc limit)
+            const evidenceId = await saveEvidence({ photo: photoData, missionName: missionName });
+
+            const transaction = {
+                user: storedUser.username,
+                item: `Missão: ${missionName} (+${earned} pts)`,
+                date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
+                time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                status: 'Validando',
+                photo: '[EVIDENCIA_SALVA]',
+                evidenceId: evidenceId || null,
+                hasPhoto: true,
+                serverTime: serverTimestamp
+            };
+
+            if (!storedUser.history) storedUser.history = [];
+            storedUser.history.unshift(transaction);
+
+            // CRITICAL: Clean any legacy base64 photos from history before saving to localStorage.
+            // Old entries (before the fix) may still contain raw base64 strings, causing a silent
+            // QuotaExceededError that aborts the entire function: no points, no history, no alert.
+            storedUser.history = storedUser.history.map(tx => {
+                if (tx.photo && typeof tx.photo === 'string' && tx.photo.startsWith('data:')) {
+                    return { ...tx, photo: '[EVIDENCIA_SALVA]', hasPhoto: true };
+                }
+                return tx;
+            });
+
+            try {
+                const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
+                globalHistory.unshift(transaction);
+                localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+                localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+            } catch (storageErr) {
+                // localStorage quota exceeded — not fatal. Firestore sync below will persist data.
+                console.warn('localStorage cheio, usando apenas Firestore:', storageErr);
+            }
+
+            // Always sync to Firestore regardless of localStorage outcome
+            saveAndSync();
+
+            // Log successful mission
+            logMissionAttempt(storedUser.email, missionId, missionName, true, serverTimestamp);
+
+            updatePointsDisplay();
+            updateRanking();
+            updateUIWithUser();
+            renderCustomMissions();
+
+            // Fire confetti BEFORE alert (alert blocks the JS render thread)
+            triggerCelebration();
+            addNotification(`${missionName} enviada para validação! +${earned} pts.`);
+            setTimeout(() => {
+                alert(`Foto enviada! Você ganhou ${earned} pontos por: ${missionName}`);
+            }, 300);
+
+        } catch (fatalErr) {
+            // Rollback points to prevent phantom points with no matching history entry
+            userPoints -= earned;
+            storedUser.points = userPoints;
+            storedUser[lastKey] = null;
+            console.error('ERRO CRÍTICO em completeMissionWithPhoto:', fatalErr);
+            alert('Ocorreu um erro ao registrar sua missão. Tente novamente. Se o problema persistir, avise o administrador.');
+        }
     };
 
     const completeMissionWithLink = (missionId, missionName, missionPoints, link, lastKey, dateKey) => {
