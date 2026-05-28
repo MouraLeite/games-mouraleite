@@ -1991,11 +1991,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update transaction status
             history[originalIndex].status = 'Recusado';
             
+            // CLEANUP: Remove base64 images from history before saving to avoid 1MB limit errors
+            const cleanedHistory = history.map(tx => {
+                const cleanedTx = { ...tx };
+                if (cleanedTx.photoData && cleanedTx.photoData.startsWith('data:image')) {
+                    cleanedTx.photoData = '[EVIDENCIA_SALVA]';
+                }
+                return cleanedTx;
+            });
+            
             // Update points
             const newPoints = Math.max(0, (parseInt(userData.points) || 0) - pointsToDeduct);
             
             await db.collection("users").doc(email).update({
-                history: history,
+                history: cleanedHistory,
                 points: newPoints
             });
             
@@ -2068,9 +2077,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${tx.item}</td>
                 ${isAdmin ? `
                     <td style="text-align:center;">
-                        ${tx.photo ? `<button class="view-photo-btn" onclick="viewPhoto('${tx.photo}')" title="Ver Comprovante">📸</button>` : ''}
+                        ${tx.evidenceId ? `<button class="view-photo-btn" onclick="viewPhoto(null, '${tx.evidenceId}')" title="Ver Comprovante">📸</button>` : (tx.photo ? `<button class="view-photo-btn" onclick="viewPhoto('${tx.photo}')" title="Ver Comprovante">📸</button>` : '')}
                         ${tx.link ? `<a href="${tx.link}" target="_blank" class="view-link-btn" title="Ver Publicação" style="text-decoration:none; margin-left:5px;">🔗</a>` : ''}
-                        ${(!tx.photo && !tx.link) ? '<span style="color:#ccc">-</span>' : ''}
+                        ${(!tx.photo && !tx.evidenceId && !tx.link) ? '<span style="color:#ccc">-</span>' : ''}
                     </td>
                 ` : ''}
                 <td>${tx.date}</td>
@@ -2377,14 +2386,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const photoInput = document.createElement('input');
                 photoInput.type = 'file';
                 photoInput.accept = 'image/*';
+                photoInput.style.display = 'none'; // Importante para não aparecer na tela
+                document.body.appendChild(photoInput); // Fix: iOS Safari exige que o input esteja no DOM para o click funcionar
+                
                 photoInput.onchange = () => {
                     const file = photoInput.files[0];
                     if (file) {
                         const reader = new FileReader();
                         reader.onload = () => {
                             completeMissionWithPhoto(missionId, missionName, missionPoints, reader.result, lastKey, dateKey);
+                            if(document.body.contains(photoInput)) document.body.removeChild(photoInput);
                         };
                         reader.readAsDataURL(file);
+                    } else {
+                        if(document.body.contains(photoInput)) document.body.removeChild(photoInput);
                     }
                 };
                 photoInput.click();
@@ -2499,7 +2514,7 @@ document.addEventListener('DOMContentLoaded', () => {
             date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
             time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
             status: 'Validando',
-            photo: photoData,
+            photo: '[EVIDENCIA_SALVA]', // Evita o limite de 5MB do localStorage (e travamento no upload)
             evidenceId: evidenceId || null,
             hasPhoto: true,
             serverTime: serverTimestamp
@@ -2596,14 +2611,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 300);
     };
 
-    window.viewPhoto = (photoData) => {
+    window.viewPhoto = async (photoData, evidenceId = null) => {
         // Create viewer modal
         const viewer = document.createElement('div');
         viewer.id = 'photo-viewer-modal';
         viewer.style = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;';
         
         const img = document.createElement('img');
-        img.src = photoData;
         img.style = 'max-width:95%; max-height:85%; border-radius:12px; border: 4px solid white; box-shadow: 0 0 30px rgba(0,0,0,0.5); object-fit: contain;';
         
         const closeBtn = document.createElement('div');
@@ -2611,7 +2625,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeBtn.style = 'position:absolute; top:20px; right:30px; color:white; font-size:40px; font-weight:bold; cursor:pointer;';
         
         const tip = document.createElement('p');
-        tip.textContent = 'Clique em qualquer lugar para fechar';
+        tip.textContent = 'Carregando foto...';
         tip.style = 'color:#aaa; margin-top:15px; font-size:14px;';
 
         viewer.appendChild(closeBtn);
@@ -2620,6 +2634,31 @@ document.addEventListener('DOMContentLoaded', () => {
         
         viewer.onclick = () => viewer.remove();
         document.body.appendChild(viewer);
+
+        let finalSrc = photoData;
+
+        // Fetch from Firestore if evidenceId is present
+        if (evidenceId && dbAvailable) {
+            try {
+                const doc = await db.collection('mission_evidence').doc(evidenceId).get();
+                if (doc.exists && doc.data().photo) {
+                    finalSrc = doc.data().photo;
+                } else {
+                    tip.textContent = 'Erro: Foto não encontrada no servidor.';
+                    return;
+                }
+            } catch (err) {
+                console.error('Erro ao carregar evidência:', err);
+                tip.textContent = 'Erro ao carregar foto do servidor.';
+                return;
+            }
+        } else if (photoData === '[EVIDENCIA_SALVA]') {
+            tip.textContent = 'Erro: ID da evidência não encontrado.';
+            return;
+        }
+
+        img.src = finalSrc;
+        tip.textContent = 'Clique em qualquer lugar para fechar';
     };
 
     const startCountdown = () => {
