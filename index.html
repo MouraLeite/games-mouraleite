@@ -66,6 +66,10 @@
                     <i class="fa-solid fa-plus-circle"></i>
                     <span>Cadastrar Missões</span>
                 </a>
+                <a href="#" class="nav-item hidden" data-page="admin-prizes" id="admin-prizes-menu-item">
+                    <i class="fa-solid fa-gift"></i>
+                    <span>Cadastrar Prêmios</span>
+                </a>
                 <a href="#" class="nav-item" id="logout-btn">
                     <i class="fa-solid fa-right-from-bracket"></i>
                     <span>Sair</span>
@@ -241,49 +245,9 @@
                         <h2>Loja de Prêmios</h2>
                         <p>Troque seus pontos por itens exclusivos da Moura Leite.</p>
                     </div>
-                    <div class="store-grid">
-                        <div class="store-card">
-                            <div class="item-img"><i class="fa-solid fa-mug-hot"></i></div>
-                            <h3>Caneca Personalizada</h3>
-                            <div class="item-footer">
-                                <span class="price">450 pts</span>
-                                <button class="btn-buy" onclick="buyItem('Caneca', 450)">Trocar</button>
-                            </div>
-                        </div>
-
-                        <div class="store-card">
-                            <div class="item-img"><i class="fa-solid fa-book"></i></div>
-                            <h3>Caderno de Anotações</h3>
-                            <div class="item-footer">
-                                <span class="price">300 pts</span>
-                                <button class="btn-buy" onclick="buyItem('Caderno', 300)">Trocar</button>
-                            </div>
-                        </div>
-                        <div class="store-card">
-                            <div class="item-img"><i class="fa-solid fa-bottle-water"></i></div>
-                            <h3>Garrafa Térmica</h3>
-                            <div class="item-footer">
-                                <span class="price">650 pts</span>
-                                <button class="btn-buy" onclick="buyItem('Garrafa', 650)">Trocar</button>
-                            </div>
-                        </div>
-                        <div class="store-card">
-                            <div class="item-img"><i class="fa-solid fa-hat-cowboy"></i></div>
-                            <h3>Boné Moura Leite</h3>
-                            <div class="item-footer">
-                                <span class="price">300 pts</span>
-                                <button class="btn-buy" onclick="buyItem('Boné', 300)">Trocar</button>
-                            </div>
-                        </div>
-                        <div class="store-card">
-                            <div class="item-img"><i class="fa-solid fa-glasses"></i></div>
-                            <h3>Óculos de Sol</h3>
-                            <div class="item-footer">
-                                <span class="price">450 pts</span>
-                                <button class="btn-buy" onclick="buyItem('Óculos de Sol', 450)">Trocar</button>
-                            </div>
-                        </div>
-                        <div class="store-card store-card--boost">
+                    <div class="store-grid" id="store-grid-container">
+                        <!-- Custom prizes injected here -->
+                        <div class="store-card store-card--boost" id="boost-card">
                             <div class="item-img boost-icon"><i class="fa-solid fa-bolt"></i></div>
                             <h3>Boost de Pontos <span class="boost-badge">2x</span></h3>
                             <p class="store-card-desc">Dobra seus pontos em missões por 1 dia inteiro. Limite: 1x por mês.</p>
@@ -520,6 +484,106 @@
                                 <!-- Missions injected here -->
                                 <tr>
                                     <td colspan="5" style="text-align: center; padding: 2rem; color: #999;">Carregando missões...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Admin Prize Creation Page -->
+                <section id="admin-prizes-page" class="page-section hidden">
+                    <div class="section-title">
+                        <h2>Cadastro de Prêmios</h2>
+                        <p>Crie novos itens para a loja de prêmios.</p>
+                    </div>
+                    <div class="glass-card">
+                        <form id="prize-form" class="mission-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="prize-name">Nome do Prêmio</label>
+                                    <input type="text" id="prize-name" placeholder="Ex: Mochila Executiva" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="prize-points">Pontos Necessários</label>
+                                    <input type="number" id="prize-points" placeholder="Ex: 500" min="1" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="prize-desc">Descrição (Opcional)</label>
+                                    <input type="text" id="prize-desc" placeholder="Ex: Sabores disponíveis: Ristretto, Intenso...">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 2;">
+                                    <label>Imagem do Prêmio (Escolha Ícone OU envie uma Foto)</label>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <select id="prize-icon" style="flex: 1;">
+                                            <option value="">Nenhum ícone (usar foto)</option>
+                                            <option value="fa-mug-hot">Caneca</option>
+                                            <option value="fa-book">Caderno / Livro</option>
+                                            <option value="fa-bottle-water">Garrafa</option>
+                                            <option value="svg-cap">Boné</option>
+                                            <option value="svg-capsule">Cápsulas 3 Unidades (Ilustração)</option>
+                                            <option value="svg-capsule-5">Cápsulas 5 Unidades</option>
+                                            <option value="svg-capsule-10">Cápsulas 10 Unidades</option>
+                                            <option value="svg-capsule-box">Caixa de Cápsulas (Quadrada)</option>
+                                            <option value="svg-capsule-flat">Cápsula Única (Sólida Clean)</option>
+                                            <option value="svg-capsule-3d">Cápsula Única (3D Premium)</option>
+                                            <option value="svg-capsule-outline">Cápsula Única (Apenas Contorno)</option>
+                                            <option value="fa-glasses">Óculos</option>
+                                            <option value="fa-shirt">Camiseta</option>
+                                            <option value="fa-ticket">Ingresso</option>
+                                            <option value="fa-gift" selected>Presente (Padrão)</option>
+                                        </select>
+                                        <input type="file" id="prize-image" accept="image/*" style="flex: 1;">
+                                    </div>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="prize-color">Cor do Ícone</label>
+                                    <input type="color" id="prize-color" value="#006837">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="prize-order">Posição/Ordem (Ex: 1, 2, 3...)</label>
+                                    <input type="number" id="prize-order" value="0" min="0">
+                                </div>
+                                <div class="form-group" style="display:flex; flex-direction:column; justify-content:center;">
+                                    <label for="prize-active">Ativo na Loja</label>
+                                    <div style="margin-top:10px;">
+                                        <input type="checkbox" id="prize-active" checked style="width:20px; height:20px;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="text-align: center; margin-bottom: 15px;">
+                                <div id="prize-preview" style="width: 100px; height: 100px; background: #f0f0f0; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 2.5rem; overflow: hidden; border: 1px solid #ddd;">
+                                    <i class="fa-solid fa-gift" style="color: #006837;"></i>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-auth">Cadastrar Prêmio</button>
+                            <button type="button" class="btn-secondary hidden" id="cancel-edit-prize-btn" style="margin-top: 10px; width: 100%;">Cancelar Edição</button>
+                        </form>
+                    </div>
+
+                    <div class="section-title" style="margin-top: 3rem;">
+                        <h2>Prêmios Cadastrados</h2>
+                        <p>Gerencie os prêmios disponíveis na loja.</p>
+                    </div>
+                    <div class="glass-card">
+                        <table class="history-table" style="width:100%;">
+                            <thead>
+                                <tr>
+                                    <th>Ordem</th>
+                                    <th>Nome</th>
+                                    <th>Pontos</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-prizes-list-body">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 2rem; color: #999;">Carregando prêmios...</td>
                                 </tr>
                             </tbody>
                         </table>
