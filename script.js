@@ -194,6 +194,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
 
+                    // RESET FIX: If a 'last*' cooldown field was deleted from Firestore
+                    // (e.g., by adminResetMission), remove it from localStorage too.
+                    // Without this, the mission keeps showing as "Concluído" even after admin reset.
+                    Object.keys(storedUser).forEach(key => {
+                        if ((key.startsWith('last') || key.startsWith('lastCustom')) && !(key in currentUserInDb)) {
+                            delete storedUser[key];
+                            needsUpdate = true;
+                        }
+                    });
+
                     if (needsUpdate) {
                         storedUser.points = userPoints;
                         localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
