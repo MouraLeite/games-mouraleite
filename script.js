@@ -167,7 +167,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             // Update local global list
-            localStorage.setItem('moura_leite_all_users', JSON.stringify(usersArray));
+            try {
+                localStorage.setItem('moura_leite_all_users', JSON.stringify(usersArray));
+            } catch (storageErr) {
+                console.warn('Não foi possível salvar all_users no localStorage (limite excedido?).', storageErr);
+            }
 
             // FIREBASE É A FONTE DA VERDADE: Sempre sincroniza dados do servidor para o local
             if (storedUser && storedUser.email) {
@@ -1814,18 +1818,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!storedUser.history) storedUser.history = [];
                 storedUser.history.unshift(newTransaction);
 
-                const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-                globalHistory.unshift(newTransaction);
-                localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+                try {
+                    const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
+                    globalHistory.unshift(newTransaction);
+                    if (globalHistory.length > 200) globalHistory.length = 200;
+                    localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+                } catch(e) {}
 
                 storedUser.points = userPoints;
-                localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+                try {
+                    localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+                } catch(e) {}
 
                 const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
                 const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
                 if (userIndex !== -1) {
                     allUsers[userIndex].points = userPoints;
-                    localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+                    allUsers[userIndex].history = storedUser.history;
+                    try {
+                        localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+                    } catch(e) {}
                 }
 
                 // Sync to Firestore
@@ -1929,10 +1941,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!storedUser.history) storedUser.history = [];
             storedUser.history.unshift(transaction);
 
-            const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-            globalHistory.unshift(transaction);
-            localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-            localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+            try {
+                const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
+                globalHistory.unshift(transaction);
+                if (globalHistory.length > 200) globalHistory.length = 200;
+                localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+                localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+            } catch(e) {}
 
             // Persist to Firestore (authoritative record)
             saveAndSync();
@@ -2096,13 +2111,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Pagination Variables
+    let currentHistoryPage = 1;
+    const historyItemsPerPage = 50;
+    let fullHistoryData = [];
+
     // History Rendering
-    const renderHistory = () => {
+    const renderHistory = (page = null) => {
+        if (page !== null) currentHistoryPage = page;
+        
         const historyBody = document.querySelector('#historico-page .history-table tbody');
         const historyHeader = document.querySelector('#historico-page .history-table thead tr');
         const isAdmin = storedUser.email === 'admin@mouraleite.com.br';
         
-        let historyData = [];
+        fullHistoryData = [];
 
         if (isAdmin) {
             // Aggregate history from ALL users for Admin
@@ -2112,15 +2134,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     u.history.forEach((tx, i) => {
                         // Ensure transaction has user info for global view
                         const txWithUser = { ...tx, user: tx.user || u.username, email: u.email, originalIndex: i };
-                        historyData.push(txWithUser);
+                        fullHistoryData.push(txWithUser);
                     });
                 }
             });
             // Sort by serverTime (descending) or date/time
-            historyData.sort((a, b) => (b.serverTime || 0) - (a.serverTime || 0));
+            fullHistoryData.sort((a, b) => (b.serverTime || 0) - (a.serverTime || 0));
         } else {
             // Regular user only sees their own history
-            historyData = (JSON.parse(localStorage.getItem('moura_leite_user'))?.history || []);
+            fullHistoryData = (JSON.parse(localStorage.getItem('moura_leite_user'))?.history || []);
         }
         
         if (!historyBody || !historyHeader) return;
@@ -2145,13 +2167,25 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
-        if (historyData.length === 0) {
+        const paginationContainer = document.getElementById('history-pagination');
+
+        if (fullHistoryData.length === 0) {
             const colCount = isAdmin ? 6 : 4;
             historyBody.innerHTML = `<tr><td colspan="${colCount}" style="text-align: center; padding: 2rem; color: #999;">Nenhum registro encontrado ainda.</td></tr>`;
+            if (paginationContainer) paginationContainer.classList.add('hidden');
             return;
         }
 
-        historyBody.innerHTML = historyData.map(tx => `
+        // Pagination Logic
+        const totalPages = Math.ceil(fullHistoryData.length / historyItemsPerPage);
+        if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
+        if (currentHistoryPage < 1) currentHistoryPage = 1;
+
+        const startIndex = (currentHistoryPage - 1) * historyItemsPerPage;
+        const endIndex = startIndex + historyItemsPerPage;
+        const pageData = fullHistoryData.slice(startIndex, endIndex);
+
+        historyBody.innerHTML = pageData.map(tx => `
             <tr>
                 ${isAdmin ? `<td><strong>${tx.user}</strong></td>` : ''}
                 <td>${tx.item}</td>
@@ -2174,7 +2208,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 ` : ''}
             </tr>
         `).join('');
+
+        // Update Pagination UI
+        if (paginationContainer) {
+            if (totalPages > 1) {
+                paginationContainer.classList.remove('hidden');
+                
+                const prevBtn = document.getElementById('history-prev');
+                const nextBtn = document.getElementById('history-next');
+                const pageInfo = document.getElementById('history-page-info');
+                
+                if (pageInfo) pageInfo.textContent = `Página ${currentHistoryPage} de ${totalPages}`;
+                
+                if (prevBtn) {
+                    prevBtn.disabled = currentHistoryPage === 1;
+                    prevBtn.onclick = () => {
+                        renderHistory(currentHistoryPage - 1);
+                        document.getElementById('historico-page').scrollIntoView({ behavior: 'smooth' });
+                    };
+                }
+                
+                if (nextBtn) {
+                    nextBtn.disabled = currentHistoryPage === totalPages;
+                    nextBtn.onclick = () => {
+                        renderHistory(currentHistoryPage + 1);
+                        document.getElementById('historico-page').scrollIntoView({ behavior: 'smooth' });
+                    };
+                }
+            } else {
+                paginationContainer.classList.add('hidden');
+            }
+        }
     };
+
+    // Make it available globally if needed for click handlers
+    window.renderHistory = renderHistory;
 
     // Full Detailed Ranking Rendering
     const renderFullRanking = () => {
@@ -2318,7 +2386,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
             if (userIndex !== -1) {
                 allUsers[userIndex].points = userPoints;
-                localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+                allUsers[userIndex].history = storedUser.history;
+                try {
+                    localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+                } catch(e) {}
             }
             
             // Sync to Firestore if available
@@ -2386,9 +2457,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!storedUser.history) storedUser.history = [];
                 storedUser.history.unshift(transaction);
 
-                const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-                globalHistory.unshift(transaction);
-                localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+                try {
+                    const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
+                    globalHistory.unshift(transaction);
+                    if (globalHistory.length > 200) globalHistory.length = 200;
+                    localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+                } catch(e) {}
 
                 saveAndSync();
                 updatePointsDisplay();
@@ -2539,11 +2613,16 @@ document.addEventListener('DOMContentLoaded', () => {
         storedUser.history.unshift(transaction);
         
         // Global Sync
-        const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-        globalHistory.unshift(transaction);
-        localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-        
-        localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        try {
+            const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
+            globalHistory.unshift(transaction);
+            if (globalHistory.length > 200) globalHistory.length = 200;
+            localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+            
+            localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        } catch(e) {
+            console.warn("Local storage limit reached", e);
+        }
         saveAndSync();
         
         // Log successful mission
@@ -2617,6 +2696,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
                 globalHistory.unshift(transaction);
+                if (globalHistory.length > 200) globalHistory.length = 200;
                 localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
                 localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
             } catch (storageErr) {
@@ -2686,11 +2766,14 @@ document.addEventListener('DOMContentLoaded', () => {
         storedUser.history.unshift(transaction);
         
         // Global Sync
-        const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-        globalHistory.unshift(transaction);
-        localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-        
-        localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        try {
+            const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
+            globalHistory.unshift(transaction);
+            if (globalHistory.length > 200) globalHistory.length = 200;
+            localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+            
+            localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        } catch(e) {}
         saveAndSync();
         
         // Sync with global list (redundant if saveAndSync works but kept for safety)
@@ -2698,7 +2781,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
         if (userIndex !== -1) {
             allUsers[userIndex].points = userPoints;
-            localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+            allUsers[userIndex].history = storedUser.history;
+            try {
+                localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
+            } catch(e) {}
         }
         
         // Log successful mission

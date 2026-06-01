@@ -1206,6 +1206,52 @@ body {
     color: var(--primary-green);
 }
 
+/* Pagination Styles */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    margin-top: 1rem;
+}
+
+.pagination-container.hidden {
+    display: none !important;
+}
+
+.btn-pagination {
+    background: white;
+    color: var(--primary-green);
+    border: 2px solid var(--primary-green);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-pagination:hover:not(:disabled) {
+    background: var(--primary-green);
+    color: white;
+}
+
+.btn-pagination:disabled {
+    border-color: #ddd;
+    color: #999;
+    background: #f8f8f8;
+    cursor: not-allowed;
+}
+
+.page-info {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
 /* Login Page Styles */
 
 .status-tag {
