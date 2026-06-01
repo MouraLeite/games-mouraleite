@@ -192,6 +192,11 @@
 
                     totalUsers++;
                     index++;
+                    
+                    let calculatedPoints = 0;
+                    let unknownCount = 0;
+                    let details = [];
+                    
                     const dedupedHistory = deduplicateHistory(user.history || []);
                     
                     dedupedHistory.forEach((tx, i) => {
