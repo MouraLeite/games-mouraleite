@@ -2152,9 +2152,9 @@ document.addEventListener('DOMContentLoaded', () => {
         fullHistoryData = [];
 
         if (isAdmin) {
-            // Admin: try to fetch fresh from Firestore first, fall back to localStorage
+            // Admin: force fetch from server to ensure fresh data
             if (dbAvailable) {
-                db.collection('users').get().then(snapshot => {
+                db.collection('users').get({ source: 'server' }).then(snapshot => {
                     const allTx = [];
                     snapshot.forEach(doc => {
                         const u = doc.data();
@@ -2350,7 +2350,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const confirmed = confirm('Isso vai recalcular e corrigir os pontos de TODOS os colaboradores com base no histórico de transações.\n\nDeseja continuar?');
         if (!confirmed) return;
 
+        // Known points for old entries that didn't have (+X pts) in the string
+        const KNOWN_MISSION_POINTS = {
+            'Check-in Diário': 1,
+            'Integração entre Times': 5,
+            'Café de Integração': 5,
+            'Almoço Moura Leite': 5,
+            'Reunião de Integração': 8,
+            'Embaixador Digital': 15,
+            'Engajamento Viva Engage': 12,
+            'Dinâmica de Jogos': 20
+        };
+        const KNOWN_ITEMS = {
+            'Caneca': -450,
+            'Caderno': -300,
+            'Garrafa': -650,
+            'Boné': -300,
+            'Óculos de Sol': -450,
+            'Boost de Pontos 2x': -50
+        };
+
         try {
+            // Fetch custom mission points first
+            const missionsSnap = await db.collection("custom_missions").get();
+            const customMissionPoints = {};
+            missionsSnap.forEach(doc => {
+                const m = doc.data();
+                customMissionPoints[m.name] = m.points;
+            });
+
             const snapshot = await db.collection('users').get();
             const batch = db.batch();
             let usersUpdated = 0;
@@ -2363,13 +2391,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Sum points from history
                 let calculatedPoints = 0;
                 u.history.forEach(tx => {
-                    const match = (tx.item || '').match(/\(([+-]?\d+)\s*pts?\)/i);
+                    if (tx.status === 'Recusado' || tx.status === 'Cancelado') return;
+                    
+                    const itemText = tx.item || '';
+                    const match = itemText.match(/\(([+-]?\d+)\s*pts?\)/i);
+                    
                     if (match) {
                         calculatedPoints += parseInt(match[1]);
+                    } else {
+                        // Fallback for old history formats
+                        if (itemText.startsWith('Missão:')) {
+                            const missionPart = itemText.replace('Missão: ', '').trim();
+                            let found = false;
+                            for (const [name, pts] of Object.entries(KNOWN_MISSION_POINTS)) {
+                                if (missionPart.includes(name)) { calculatedPoints += pts; found = true; break; }
+                            }
+                            if (!found) {
+                                for (const [name, pts] of Object.entries(customMissionPoints)) {
+                                    if (missionPart.includes(name)) { calculatedPoints += parseInt(pts); break; }
+                                }
+                            }
+                        } else {
+                            for (const [name, pts] of Object.entries(KNOWN_ITEMS)) {
+                                if (itemText.includes(name)) { calculatedPoints += pts; break; }
+                            }
+                        }
                     }
                 });
 
-                if (calculatedPoints !== u.points) {
+                if (calculatedPoints !== (u.points || 0)) {
                     batch.update(doc.ref, { points: Math.max(0, calculatedPoints) });
                     usersUpdated++;
                 }
