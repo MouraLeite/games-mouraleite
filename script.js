@@ -291,6 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                     <td>
                         <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                            <button onclick="viewUserHistory('${user.email}', '${user.username}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#006837;">📋 Histórico</button>
                             <button onclick="editUser('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px;">Editar</button>
                             <button onclick="resetUserPassword('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#f39c12;">Resetar Senha</button>
                             <button onclick="toggleUserStatus('${user.email}')" class="btn-buy" style="padding:4px 8px; font-size:10px; background:#666;">${user.disabled ? 'Ativar' : 'Desativar'}</button>
@@ -303,6 +304,117 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }).join('');
     };
+
+    window.viewUserHistory = async (email, username) => {
+        const modal = document.getElementById('user-history-modal');
+        const body = document.getElementById('user-history-modal-body');
+        const title = document.getElementById('user-history-modal-title');
+        const subtitle = document.getElementById('user-history-modal-subtitle');
+        const summary = document.getElementById('user-history-summary');
+
+        if (!modal) return;
+
+        title.textContent = `📋 Histórico de Pontos — ${username}`;
+        subtitle.textContent = email;
+        body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#999;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando dados do Firebase...</td></tr>';
+        summary.innerHTML = '';
+        modal.classList.remove('hidden');
+
+        try {
+            const doc = await db.collection('users').doc(email).get({ source: 'server' });
+            if (!doc.exists) {
+                body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#f44336;">Usuário não encontrado no Firebase.</td></tr>';
+                return;
+            }
+
+            const userData = doc.data();
+            const history = userData.history || [];
+
+            // Sort newest first
+            const sorted = [...history].sort((a, b) => (b.serverTime || 0) - (a.serverTime || 0));
+
+            // Calculate totals
+            let totalEarned = 0;
+            let totalSpent = 0;
+
+            sorted.forEach(tx => {
+                const earnedMatch = (tx.item || '').match(/\(\+(\d+)\s*pts\)/);
+                const spentMatch  = (tx.item || '').match(/\(\-(\d+)\s*pts\)/);
+                if (tx.status === 'Recusado' || tx.status === 'Cancelado') return;
+                if (earnedMatch) totalEarned += parseInt(earnedMatch[1]);
+                else if (spentMatch) totalSpent += parseInt(spentMatch[1]);
+            });
+
+            // Summary pills
+            summary.innerHTML = `
+                <div style="background:#e8f5e9;color:#1b5e20;padding:8px 16px;border-radius:20px;font-size:0.85rem;font-weight:600;">
+                    ✅ Ganhou: +${totalEarned} pts
+                </div>
+                <div style="background:#fce4ec;color:#880e4f;padding:8px 16px;border-radius:20px;font-size:0.85rem;font-weight:600;">
+                    🛒 Gastou: -${totalSpent} pts
+                </div>
+                <div style="background:#e3f2fd;color:#0d47a1;padding:8px 16px;border-radius:20px;font-size:0.85rem;font-weight:600;">
+                    💰 Saldo Calculado: ${totalEarned - totalSpent} pts
+                </div>
+                <div style="background:#f3e5f5;color:#4a148c;padding:8px 16px;border-radius:20px;font-size:0.85rem;font-weight:600;">
+                    📊 Total de Registros: ${sorted.length}
+                </div>
+            `;
+
+            if (sorted.length === 0) {
+                body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#999;">Nenhum registro encontrado.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = sorted.map(tx => {
+                const earnedMatch = (tx.item || '').match(/\(\+(\d+)\s*pts\)/);
+                const spentMatch  = (tx.item || '').match(/\(\-(\d+)\s*pts\)/);
+                const isRejected  = tx.status === 'Recusado' || tx.status === 'Cancelado';
+
+                let ptsDisplay = '-';
+                let ptsCls = '';
+                if (isRejected) {
+                    ptsDisplay = `<span style="color:#f44336;text-decoration:line-through;">Recusado</span>`;
+                } else if (earnedMatch) {
+                    ptsDisplay = `<span style="color:#4caf50;font-weight:700;">+${earnedMatch[1]} pts</span>`;
+                    ptsCls = 'earned';
+                } else if (spentMatch) {
+                    ptsDisplay = `<span style="color:#e53935;font-weight:700;">-${spentMatch[1]} pts</span>`;
+                    ptsCls = 'spent';
+                }
+
+                const statusColors = {
+                    'Concluído': '#4caf50', 'Validando': '#ff9800',
+                    'Recusado': '#f44336', 'Cancelado': '#9e9e9e', 'Ativo': '#2196f3'
+                };
+                const sColor = statusColors[tx.status] || '#999';
+
+                return `<tr>
+                    <td>${tx.date || '—'}</td>
+                    <td>${tx.time || '—'}</td>
+                    <td>${tx.item || '—'}</td>
+                    <td style="text-align:center;">${ptsDisplay}</td>
+                    <td><span class="status-badge" style="background:${sColor}20;color:${sColor};border:1px solid ${sColor}40;">${tx.status || '—'}</span></td>
+                </tr>`;
+            }).join('');
+
+        } catch (err) {
+            console.error('Erro ao carregar histórico do usuário:', err);
+            body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:#f44336;">Erro ao carregar dados: ${err.message}</td></tr>`;
+        }
+    };
+
+    // Close user history modal
+    const closeUserHistoryBtn = document.getElementById('close-user-history');
+    const userHistoryModal = document.getElementById('user-history-modal');
+    if (closeUserHistoryBtn) {
+        closeUserHistoryBtn.addEventListener('click', () => userHistoryModal.classList.add('hidden'));
+    }
+    if (userHistoryModal) {
+        userHistoryModal.addEventListener('click', (e) => {
+            if (e.target === userHistoryModal) userHistoryModal.classList.add('hidden');
+        });
+    }
 
     const getIconClass = (iconName) => {
         if (!iconName) return 'fa-solid fa-bullseye';

@@ -718,6 +718,36 @@
             </form>
         </div>
     </div>
+
+    <!-- User Point History Modal -->
+    <div id="user-history-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 750px; max-height: 85vh; display: flex; flex-direction: column;">
+            <span class="close-modal" id="close-user-history">&times;</span>
+            <div class="section-title" style="margin-bottom: 1rem;">
+                <h2 id="user-history-modal-title">📋 Histórico de Pontos</h2>
+                <p id="user-history-modal-subtitle" style="font-size: 0.85rem; color: #999;"></p>
+            </div>
+            <!-- Summary Pills -->
+            <div id="user-history-summary" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:1rem;"></div>
+            <!-- Table -->
+            <div style="overflow-y: auto; flex: 1;">
+                <table class="history-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Hora</th>
+                            <th>Transação</th>
+                            <th style="text-align:center;">Pontos</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-history-modal-body">
+                        <tr><td colspan="5" style="text-align:center; padding:2rem; color:#999;">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
