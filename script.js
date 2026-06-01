@@ -2130,12 +2130,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyItemsPerPage = 50;
     let fullHistoryData = [];
 
-    // Helper: deduplicate history entries by serverTime+item+user composite key
+    // Helper: deduplicate history entries by item+user+date+time composite key (minute precision)
     const deduplicateHistory = (entries) => {
         const seen = new Set();
         return entries.filter(tx => {
-            // Build a unique fingerprint for each transaction
-            const key = `${tx.serverTime || ''}_${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
+            // Key uses minute-level time precision (no serverTime, which differs per millisecond)
+            // This removes entries that are the same mission done at the same minute on the same day
+            const key = `${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
@@ -2320,7 +2321,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const seen = new Set();
                 const cleanHistory = u.history.filter(tx => {
-                    const key = `${tx.serverTime || ''}_${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
+                    // Same key as renderHistory deduplication
+                    const key = `${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
                     if (seen.has(key)) { totalCleaned++; return false; }
                     seen.add(key);
                     // Also strip any leftover base64 photos
