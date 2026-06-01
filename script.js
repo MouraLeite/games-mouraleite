@@ -166,9 +166,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 usersArray.push(doc.data());
             });
             
+            // Strip large base64 photos to prevent localStorage quota issues from legacy data
+            const cleanUsersArray = usersArray.map(u => {
+                const cleanU = { ...u };
+                if (cleanU.history && Array.isArray(cleanU.history)) {
+                    cleanU.history = cleanU.history.map(tx => {
+                        if (tx.photo && typeof tx.photo === 'string' && tx.photo.length > 500) {
+                            return { ...tx, photo: '[EVIDENCIA_SALVA]', hasPhoto: true };
+                        }
+                        return tx;
+                    });
+                }
+                return cleanU;
+            });
+
             // Update local global list
             try {
-                localStorage.setItem('moura_leite_all_users', JSON.stringify(usersArray));
+                localStorage.setItem('moura_leite_all_users', JSON.stringify(cleanUsersArray));
             } catch (storageErr) {
                 console.warn('Não foi possível salvar all_users no localStorage (limite excedido?).', storageErr);
             }
