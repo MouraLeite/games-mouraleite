@@ -1832,12 +1832,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!storedUser.history) storedUser.history = [];
                 storedUser.history.unshift(newTransaction);
 
-                try {
-                    const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-                    globalHistory.unshift(newTransaction);
-                    if (globalHistory.length > 200) globalHistory.length = 200;
-                    localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-                } catch(e) {}
+                // Global history is obsolete, removed to save quota
 
                 storedUser.points = userPoints;
                 try {
@@ -2147,6 +2142,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderHistory = (page = null) => {
         if (page !== null) currentHistoryPage = page;
         
+        // Free up localStorage space by deleting the obsolete global history
+        try { localStorage.removeItem('moura_leite_global_history'); } catch(e) {}
+        
         const historyBody = document.querySelector('#historico-page .history-table tbody');
         const historyHeader = document.querySelector('#historico-page .history-table thead tr');
         const isAdmin = storedUser.email === 'admin@mouraleite.com.br';
@@ -2181,8 +2179,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 _loadHistoryFromLocal(isAdmin);
             }
         } else {
-            // Regular user: read from localStorage (already synced from Firestore via onSnapshot)
-            const rawHistory = JSON.parse(localStorage.getItem('moura_leite_user'))?.history || [];
+            // Regular user: read from in-memory storedUser to avoid localStorage quota freeze bugs
+            const rawHistory = storedUser.history || [];
             fullHistoryData = deduplicateHistory(rawHistory);
         }
         
@@ -2519,18 +2517,23 @@ document.addEventListener('DOMContentLoaded', () => {
             // Ensure points are synced as numbers
             storedUser.points = parseInt(userPoints) || 0;
             
-            // Save locally (with photos for local admin viewing)
-            localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+            try {
+                localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+            } catch(e) {
+                console.warn("Could not save moura_leite_user locally (quota):", e);
+            }
             
             // Update global list locally for immediate feedback
-            const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
-            const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
-            if (userIndex !== -1) {
-                allUsers[userIndex].points = userPoints;
-                allUsers[userIndex].history = storedUser.history;
-                try {
+            try {
+                const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+                const userIndex = allUsers.findIndex(u => u.email === storedUser.email);
+                if (userIndex !== -1) {
+                    allUsers[userIndex].points = userPoints;
+                    allUsers[userIndex].history = storedUser.history;
                     localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
-                } catch(e) {}
+                }
+            } catch(e) {
+                console.warn("Could not save moura_leite_all_users locally (quota):", e);
             }
             
             // Sync to Firestore if available
@@ -2753,17 +2756,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!storedUser.history) storedUser.history = [];
         storedUser.history.unshift(transaction);
         
-        // Global Sync
-        try {
-            const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
-            globalHistory.unshift(transaction);
-            if (globalHistory.length > 200) globalHistory.length = 200;
-            localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
-            
-            localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
-        } catch(e) {
-            console.warn("Local storage limit reached", e);
-        }
+        // Global Sync is obsolete, handled by Firestore
         saveAndSync();
         
         // Log successful mission
