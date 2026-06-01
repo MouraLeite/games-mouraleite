@@ -135,6 +135,16 @@
             return null; // Não conseguimos determinar
         }
 
+        const deduplicateHistory = (entries) => {
+            const seen = new Set();
+            return entries.filter(tx => {
+                const key = `${tx.serverTime || ''}_${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        };
+
         async function runAudit() {
             const loading = document.getElementById('loading');
             const results = document.getElementById('results');
@@ -182,13 +192,23 @@
 
                     totalUsers++;
                     index++;
-                    const history = user.history || [];
-                    let calculatedPoints = 0;
-                    let unknownCount = 0;
-                    let details = [];
-
-                    history.forEach((tx, i) => {
+                    const dedupedHistory = deduplicateHistory(user.history || []);
+                    
+                    dedupedHistory.forEach((tx, i) => {
                         const pts = parsePointsFromItem(tx.item || '', customMissionPoints);
+                        
+                        // Se a transação foi recusada/cancelada, ela não deve somar pontos.
+                        // Para fins de auditoria, mostramos ela como um valor negativo se for uma missão (que seria positiva).
+                        if (tx.status === 'Recusado' || tx.status === 'Cancelado') {
+                            if (pts !== null && pts > 0) {
+                                // Explicitly show that it was subtracted/negated
+                                details.push(`<div style="color:#f44336;">${tx.date || '??'} | ${tx.item} → -${pts} pts (RECUSADO)</div>`);
+                            } else {
+                                details.push(`<div style="color:#f44336; text-decoration: line-through;">${tx.date || '??'} | ${tx.item} (${tx.status.toUpperCase()})</div>`);
+                            }
+                            return; // Don't add to calculatedPoints
+                        }
+
                         if (pts !== null) {
                             calculatedPoints += pts;
                             const sign = pts >= 0 ? '+' : '';
@@ -196,7 +216,7 @@
                             details.push(`<div class="${cls}">${tx.date || '??'} | ${tx.item} → ${sign}${pts} pts</div>`);
                         } else {
                             unknownCount++;
-                            details.push(`<div style="color:#ffd54f">⚠ ${tx.date || '??'} | ${tx.item} → Pts DESCONHECIDOS (missão customizada sem valor registrado)</div>`);
+                            details.push(`<div style="color:#ffd54f">⚠ ${tx.date || '??'} | ${tx.item} → Pts DESCONHECIDOS</div>`);
                         }
                     });
 
