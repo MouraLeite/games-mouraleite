@@ -375,10 +375,15 @@
 
                     <div class="admin-actions-card glass-card" style="margin-top: 20px; padding: 20px; text-align: center;">
                         <h3>🛠️ Ferramentas de Auditoria</h3>
-                        <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Use esta ferramenta se os pontos dos colaboradores estiverem incorretos ou não sincronizados.</p>
-                        <button onclick="reconcileAllUsersPoints()" class="btn-buy" style="background: #e67e22; padding: 12px 24px;">
-                            <i class="fa-solid fa-sync"></i> Recalcular e Corrigir Pontos de Todos
-                        </button>
+                        <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Use estas ferramentas se os pontos dos colaboradores estiverem incorretos ou o histórico tiver entradas duplicadas.</p>
+                        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                            <button onclick="reconcileAllUsersPoints()" class="btn-buy" style="background: #e67e22; padding: 12px 24px;">
+                                <i class="fa-solid fa-sync"></i> Recalcular e Corrigir Pontos de Todos
+                            </button>
+                            <button onclick="cleanDuplicateHistory()" class="btn-buy" style="background: #6a1b9a; padding: 12px 24px;">
+                                <i class="fa-solid fa-broom"></i> Limpar Duplicatas do Histórico
+                            </button>
+                        </div>
                     </div>
                 </section>
 

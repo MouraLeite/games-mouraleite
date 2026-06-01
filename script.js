@@ -2130,6 +2130,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyItemsPerPage = 50;
     let fullHistoryData = [];
 
+    // Helper: deduplicate history entries by serverTime+item+user composite key
+    const deduplicateHistory = (entries) => {
+        const seen = new Set();
+        return entries.filter(tx => {
+            // Build a unique fingerprint for each transaction
+            const key = `${tx.serverTime || ''}_${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    };
+
     // History Rendering
     const renderHistory = (page = null) => {
         if (page !== null) currentHistoryPage = page;
@@ -2141,24 +2153,57 @@ document.addEventListener('DOMContentLoaded', () => {
         fullHistoryData = [];
 
         if (isAdmin) {
-            // Aggregate history from ALL users for Admin
-            const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
-            allUsers.forEach(u => {
-                if (u.history && Array.isArray(u.history)) {
-                    u.history.forEach((tx, i) => {
-                        // Ensure transaction has user info for global view
-                        const txWithUser = { ...tx, user: tx.user || u.username, email: u.email, originalIndex: i };
-                        fullHistoryData.push(txWithUser);
+            // Admin: try to fetch fresh from Firestore first, fall back to localStorage
+            if (dbAvailable) {
+                db.collection('users').get().then(snapshot => {
+                    const allTx = [];
+                    snapshot.forEach(doc => {
+                        const u = doc.data();
+                        if (u.history && Array.isArray(u.history)) {
+                            u.history.forEach((tx, i) => {
+                                allTx.push({ ...tx, user: tx.user || u.username, email: u.email, originalIndex: i });
+                            });
+                        }
                     });
-                }
-            });
-            // Sort by serverTime (descending) or date/time
-            fullHistoryData.sort((a, b) => (b.serverTime || 0) - (a.serverTime || 0));
+                    // Deduplicate and sort
+                    const deduped = deduplicateHistory(allTx);
+                    deduped.sort((a, b) => (b.serverTime || 0) - (a.serverTime || 0));
+                    fullHistoryData = deduped;
+                    _renderHistoryTable(historyBody, historyHeader, isAdmin);
+                }).catch(err => {
+                    console.warn('Erro ao buscar histórico do Firestore, usando localStorage:', err);
+                    _loadHistoryFromLocal(isAdmin);
+                    _renderHistoryTable(historyBody, historyHeader, isAdmin);
+                });
+                return; // will render async
+            } else {
+                _loadHistoryFromLocal(isAdmin);
+            }
         } else {
-            // Regular user only sees their own history
-            fullHistoryData = (JSON.parse(localStorage.getItem('moura_leite_user'))?.history || []);
+            // Regular user: read from localStorage (already synced from Firestore via onSnapshot)
+            const rawHistory = JSON.parse(localStorage.getItem('moura_leite_user'))?.history || [];
+            fullHistoryData = deduplicateHistory(rawHistory);
         }
         
+        _renderHistoryTable(historyBody, historyHeader, isAdmin);
+    };
+
+    const _loadHistoryFromLocal = (isAdmin) => {
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        const allTx = [];
+        allUsers.forEach(u => {
+            if (u.history && Array.isArray(u.history)) {
+                u.history.forEach((tx, i) => {
+                    allTx.push({ ...tx, user: tx.user || u.username, email: u.email, originalIndex: i });
+                });
+            }
+        });
+        const deduped = deduplicateHistory(allTx);
+        deduped.sort((a, b) => (b.serverTime || 0) - (a.serverTime || 0));
+        fullHistoryData = deduped;
+    };
+
+    const _renderHistoryTable = (historyBody, historyHeader, isAdmin) => {
         if (!historyBody || !historyHeader) return;
 
         // Update Header
@@ -2258,7 +2303,87 @@ document.addEventListener('DOMContentLoaded', () => {
     // Make it available globally if needed for click handlers
     window.renderHistory = renderHistory;
 
-    // Full Detailed Ranking Rendering
+    // Admin Tool: Clean duplicate history entries in Firestore for all users
+    window.cleanDuplicateHistory = async () => {
+        if (!dbAvailable) { alert('Firebase não disponível.'); return; }
+        const confirmed = confirm('Isso vai percorrer TODOS os usuários no Firebase e remover entradas duplicadas do histórico.\n\nDeseja continuar?');
+        if (!confirmed) return;
+
+        try {
+            const snapshot = await db.collection('users').get();
+            let totalCleaned = 0;
+            const batch = db.batch();
+
+            snapshot.forEach(doc => {
+                const u = doc.data();
+                if (!u.history || !Array.isArray(u.history)) return;
+
+                const seen = new Set();
+                const cleanHistory = u.history.filter(tx => {
+                    const key = `${tx.serverTime || ''}_${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
+                    if (seen.has(key)) { totalCleaned++; return false; }
+                    seen.add(key);
+                    // Also strip any leftover base64 photos
+                    if (tx.photo && typeof tx.photo === 'string' && tx.photo.length > 500) {
+                        tx.photo = '[EVIDENCIA_SALVA]';
+                        tx.hasPhoto = true;
+                    }
+                    return true;
+                });
+
+                if (cleanHistory.length !== u.history.length) {
+                    batch.update(doc.ref, { history: cleanHistory });
+                }
+            });
+
+            await batch.commit();
+            alert(`✅ Limpeza concluída!\n${totalCleaned} entradas duplicadas foram removidas do Firestore.\n\nRecarregue a página para ver o histórico atualizado.`);
+        } catch (err) {
+            console.error('Erro ao limpar duplicatas:', err);
+            alert('Erro ao limpar duplicatas. Veja o console para detalhes.');
+        }
+    };
+
+    // Admin Tool: Reconcile points for all users based on their history
+    window.reconcileAllUsersPoints = async () => {
+        if (!dbAvailable) { alert('Firebase não disponível.'); return; }
+        const confirmed = confirm('Isso vai recalcular e corrigir os pontos de TODOS os colaboradores com base no histórico de transações.\n\nDeseja continuar?');
+        if (!confirmed) return;
+
+        try {
+            const snapshot = await db.collection('users').get();
+            const batch = db.batch();
+            let usersUpdated = 0;
+
+            snapshot.forEach(doc => {
+                const u = doc.data();
+                if (u.email === 'admin@mouraleite.com.br') return;
+                if (!u.history || !Array.isArray(u.history)) return;
+
+                // Sum points from history
+                let calculatedPoints = 0;
+                u.history.forEach(tx => {
+                    const match = (tx.item || '').match(/\(([+-]?\d+)\s*pts?\)/i);
+                    if (match) {
+                        calculatedPoints += parseInt(match[1]);
+                    }
+                });
+
+                if (calculatedPoints !== u.points) {
+                    batch.update(doc.ref, { points: Math.max(0, calculatedPoints) });
+                    usersUpdated++;
+                }
+            });
+
+            await batch.commit();
+            alert(`✅ Recálculo concluído!\n${usersUpdated} colaboradores tiveram os pontos corrigidos.\n\nRecarregue a página para ver as atualizações.`);
+        } catch (err) {
+            console.error('Erro ao recalcular pontos:', err);
+            alert('Erro ao recalcular pontos. Veja o console para detalhes.');
+        }
+    };
+
+
     const renderFullRanking = () => {
         const fullRankingBody = document.getElementById('full-ranking-body');
         if (!fullRankingBody) return;
