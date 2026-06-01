@@ -2130,13 +2130,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyItemsPerPage = 50;
     let fullHistoryData = [];
 
-    // Helper: deduplicate history entries by item+user+date+time composite key (minute precision)
+    // Helper: deduplicate history entries by exact match (including serverTime)
     const deduplicateHistory = (entries) => {
         const seen = new Set();
         return entries.filter(tx => {
-            // Key uses minute-level time precision (no serverTime, which differs per millisecond)
-            // This removes entries that are the same mission done at the same minute on the same day
-            const key = `${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
+            // Include serverTime (milliseconds) so that two legitimate actions done in the same minute by the user are NOT treated as duplicates.
+            // Only exact bug-clones (with the exact same serverTime or both missing it) will be removed.
+            const key = `${tx.serverTime || ''}_${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
@@ -2321,8 +2321,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const seen = new Set();
                 const cleanHistory = u.history.filter(tx => {
-                    // Same key as renderHistory deduplication
-                    const key = `${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
+                    // Same key as renderHistory deduplication (including serverTime)
+                    const key = `${tx.serverTime || ''}_${tx.item || ''}_${tx.user || ''}_${tx.date || ''}_${tx.time || ''}`;
                     if (seen.has(key)) { totalCleaned++; return false; }
                     seen.add(key);
                     // Also strip any leftover base64 photos
