@@ -91,35 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let serverTimeLastSync = Date.now();
 
     const syncServerTime = async () => {
-        if (!dbAvailable) {
-            console.warn('Skipping server time sync because Firestore is unavailable.');
-            return;
-        }
-
-        try {
-            // Use Firebase server timestamp as reference
-            const testRef = db.collection('_server_time').doc('sync');
-            const syncDoc = await testRef.get();
-            const serverTime = syncDoc.exists && syncDoc.data().timestamp 
-                ? syncDoc.data().timestamp.toDate().getTime()
-                : Date.now();
-            
-            serverTimeOffset = serverTime - Date.now();
-            serverTimeLastSync = Date.now();
-            console.log('Server time synced, offset:', serverTimeOffset, 'ms');
-        } catch (e) {
-            console.warn('Could not sync server time:', e);
-        }
+        // Obsolete: Relying on Date.now()
+        serverTimeOffset = 0;
+        serverTimeLastSync = Date.now();
     };
 
     const getServerTime = () => {
-        // If last sync was over 5 minutes ago, use local time with caution
-        const timeSinceSync = Date.now() - serverTimeLastSync;
-        if (timeSinceSync > 300000) {
-            // 5 minutes passed, prefer local with notification
-            return Date.now();
-        }
-        return Date.now() + serverTimeOffset;
+        return Date.now();
     };
 
     const logMissionAttempt = async (userId, missionId, missionName, success, timestamp) => {
