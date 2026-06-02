@@ -1520,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
     }
 
-    // Rank Definitions
+    // Rank Definitions — Níveis baseados em UTILIZAÇÃO de pontos (gastos na loja/boost)
     const ranks = [
         { name: 'Iniciante', min: 0, next: 500, icon: 'fa-seedling', class: 'rank-iniciante', multiplier: 1.0 },
         { name: 'Bronze', min: 501, next: 1500, icon: 'fa-medal', class: 'rank-bronze', multiplier: 1.1 },
@@ -1530,9 +1530,25 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: 'Diamante', min: 10001, next: Infinity, icon: 'fa-gem', class: 'rank-diamante', multiplier: 1.0 }
     ];
 
+    // ── Calcula total de pontos GASTOS pelo usuário (loja + boost) ────────────
+    const getUserSpentPoints = () => {
+        const history = storedUser.history || [];
+        let spent = 0;
+        history.forEach(tx => {
+            // Ignora transações recusadas/canceladas
+            if (tx.status === 'Recusado' || tx.status === 'Cancelado') return;
+            const spentMatch = (tx.item || '').match(/\(-(\d+)\s*pts\)/);
+            if (spentMatch) {
+                spent += parseInt(spentMatch[1]);
+            }
+        });
+        return spent;
+    };
+
     // ── Multiplicador Base e Boost de Pontos ────────────────────────────────────
     const _baseMultiplier = () => {
-        const currentRankObj = ranks.find((r, i) => userPoints <= r.next) || ranks[ranks.length-1];
+        const spentPts = getUserSpentPoints();
+        const currentRankObj = ranks.find((r, i) => spentPts <= r.next) || ranks[ranks.length-1];
         return currentRankObj.multiplier || 1.0;
     };
 
@@ -1547,8 +1563,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update UI with User Data
     const updateUIWithUser = () => {
-        // Find Current Rank
-        const currentRankObj = ranks.find((r, i) => userPoints <= r.next) || ranks[ranks.length-1];
+        // Find Current Rank based on SPENT points (utilização)
+        const spentPts = getUserSpentPoints();
+        const currentRankObj = ranks.find((r, i) => spentPts <= r.next) || ranks[ranks.length-1];
         const nextRankObj = ranks[ranks.indexOf(currentRankObj) + 1] || currentRankObj;
         
         const previousRank = storedUser.rank;
@@ -1594,12 +1611,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (currentRankObj !== nextRankObj) {
-            const pointsForNext = nextRankObj.min - userPoints;
-            if (heroSub) heroSub.innerHTML = `Você está a apenas <strong>${pointsForNext} pontos</strong> de subir para o nível <strong>${nextRankObj.name}</strong>.`;
+            const pointsForNext = nextRankObj.min - spentPts;
+            if (heroSub) heroSub.innerHTML = `Resgate mais <strong>${pointsForNext} pontos</strong> em prêmios para subir ao nível <strong>${nextRankObj.name}</strong>.`;
             
             // Progress Bar Logic
             const range = nextRankObj.min - currentRankObj.min;
-            const progress = ((userPoints - currentRankObj.min) / range) * 100;
+            const progress = ((spentPts - currentRankObj.min) / range) * 100;
             if (rankFill) rankFill.style.width = `${Math.max(5, progress)}%`;
             if (rankLabels.length >= 2) {
                 rankLabels[0].textContent = currentRankObj.name;
@@ -1991,19 +2008,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Get current server time from Firestore
-            const serverTsDoc = await db.collection('_server_time').doc('sync').get();
-            let serverNow;
-            if (serverTsDoc.exists && serverTsDoc.data().timestamp) {
-                serverNow = serverTsDoc.data().timestamp.toDate();
-            } else {
-                // Write server timestamp and read back
-                await db.collection('_server_time').doc('sync').set({
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                const fresh = await db.collection('_server_time').doc('sync').get();
-                serverNow = fresh.data().timestamp.toDate();
-            }
+            // ALWAYS write a fresh server timestamp first, then read it back.
+            // This prevents the "time machine" bug where a stale timestamp freezes dates.
+            await db.collection('_server_time').doc('sync').set({
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            const fresh = await db.collection('_server_time').doc('sync').get();
+            const serverNow = fresh.data().timestamp.toDate();
 
             const boostMonth = (serverNow.getMonth() + 1) + '-' + serverNow.getFullYear();
             const userDoc = await db.collection('users').doc(storedUser.email).get();
