@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${user.email}</td>
                     <td>${user.dept || '-'}</td>
                     <td>${user.diretoria ? (user.diretoria.replace(/^diretoria-/i, '').charAt(0).toUpperCase() + user.diretoria.replace(/^diretoria-/i, '').slice(1)) : '-'}</td>
-                    <td>${user.points} pts</td>
+                    <td>${user.points} ML Coins</td>
                     <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                     <td>
                         <div style="display:flex; gap:5px; flex-wrap:wrap;">
@@ -338,8 +338,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let totalSpent = 0;
 
             sorted.forEach(tx => {
-                const earnedMatch = (tx.item || '').match(/\(\+(\d+)\s*pts\)/);
-                const spentMatch  = (tx.item || '').match(/\(\-(\d+)\s*pts\)/);
+                const earnedMatch = (tx.item || '').match(/\(\+(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
+                const spentMatch  = (tx.item || '').match(/\(\-(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
                 if (tx.status === 'Recusado' || tx.status === 'Cancelado') return;
                 if (earnedMatch) totalEarned += parseInt(earnedMatch[1]);
                 else if (spentMatch) totalSpent += parseInt(spentMatch[1]);
@@ -348,13 +348,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Summary pills
             summary.innerHTML = `
                 <div style="background:#e8f5e9;color:#1b5e20;padding:8px 16px;border-radius:20px;font-size:0.85rem;font-weight:600;">
-                    ✅ Ganhou: +${totalEarned} pts
+                    ✅ Ganhou: +${totalEarned} ML Coins
                 </div>
                 <div style="background:#fce4ec;color:#880e4f;padding:8px 16px;border-radius:20px;font-size:0.85rem;font-weight:600;">
-                    🛒 Gastou: -${totalSpent} pts
+                    🛒 Gastou: -${totalSpent} ML Coins
                 </div>
                 <div style="background:#e3f2fd;color:#0d47a1;padding:8px 16px;border-radius:20px;font-size:0.85rem;font-weight:600;">
-                    💰 Saldo Calculado: ${totalEarned - totalSpent} pts
+                    💰 Saldo Calculado: ${totalEarned - totalSpent} ML Coins
                 </div>
                 <div style="background:#f3e5f5;color:#4a148c;padding:8px 16px;border-radius:20px;font-size:0.85rem;font-weight:600;">
                     📊 Total de Registros: ${sorted.length}
@@ -367,8 +367,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             body.innerHTML = sorted.map(tx => {
-                const earnedMatch = (tx.item || '').match(/\(\+(\d+)\s*pts\)/);
-                const spentMatch  = (tx.item || '').match(/\(\-(\d+)\s*pts\)/);
+                const earnedMatch = (tx.item || '').match(/\(\+(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
+                const spentMatch  = (tx.item || '').match(/\(\-(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
                 const isRejected  = tx.status === 'Recusado' || tx.status === 'Cancelado';
 
                 let ptsDisplay = '-';
@@ -376,10 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isRejected) {
                     ptsDisplay = `<span style="color:#f44336;text-decoration:line-through;">Recusado</span>`;
                 } else if (earnedMatch) {
-                    ptsDisplay = `<span style="color:#4caf50;font-weight:700;">+${earnedMatch[1]} pts</span>`;
+                    ptsDisplay = `<span style="color:#4caf50;font-weight:700;">+${earnedMatch[1]} ML Coins</span>`;
                     ptsCls = 'earned';
                 } else if (spentMatch) {
-                    ptsDisplay = `<span style="color:#e53935;font-weight:700;">-${spentMatch[1]} pts</span>`;
+                    ptsDisplay = `<span style="color:#e53935;font-weight:700;">-${spentMatch[1]} ML Coins</span>`;
                     ptsCls = 'spent';
                 }
 
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `<tr>
                     <td>${tx.date || '—'}</td>
                     <td>${tx.time || '—'}</td>
-                    <td>${tx.item || '—'}</td>
+                    <td>${(tx.item || '—').replace(/pts|Moura Coins/gi, 'ML Coins')}</td>
                     <td style="text-align:center;">${ptsDisplay}</td>
                     <td><span class="status-badge" style="background:${sColor}20;color:${sColor};border:1px solid ${sColor}40;">${tx.status || '—'}</span></td>
                 </tr>`;
@@ -782,7 +782,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3>${mission.name}</h3>
                         <p>${mission.description}</p>
                         <div class="quest-footer">
-                            <span class="pts-gain">+${pointValue} pts</span>
+                            <span class="pts-gain" style="display:flex; align-items:center; gap:4px; font-weight:700;">
+                                +${pointValue}
+                                <svg viewBox="0 0 100 100" width="16" height="16" style="filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));">
+                                    <circle cx="68" cy="30" r="28" fill="#F1863B" />
+                                    <ellipse cx="38" cy="38" rx="16" ry="14" fill="#2E7D32" />
+                                    <ellipse cx="55" cy="32" rx="14" ry="13" fill="#388E3C" />
+                                    <ellipse cx="68" cy="38" rx="15" ry="13" fill="#2E7D32" />
+                                    <ellipse cx="50" cy="28" rx="13" ry="12" fill="#43A047" />
+                                    <ellipse cx="42" cy="44" rx="12" ry="10" fill="#388E3C" />
+                                    <ellipse cx="62" cy="44" rx="12" ry="10" fill="#2E7D32" />
+                                    <ellipse cx="52" cy="22" rx="10" ry="9" fill="#4CAF50" />
+                                    <path d="M 46 50 L 42 78 C 42 80 44 82 50 82 C 56 82 58 80 58 78 L 54 50 Z" fill="#1B5E20" />
+                                    <line x1="22" y1="82" x2="78" y2="82" stroke="#1B5E20" stroke-width="3" stroke-linecap="round" />
+                                </svg>
+                            </span>
                             <button class="btn-checkin custom-mission-btn" ${buttonDisabled} data-mission-id="${mission.id}" data-mission-name="${mission.name}" data-mission-points="${mission.points}" data-validation-type="${mission.validationType}" data-frequency="${mission.frequency}">${buttonText}</button>
                         </div>
                         ${adminActions}
@@ -815,7 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 let buttonText = isCompleted ? 'Concluído' : 
                     (mission.validationType === 'photo' ? 'Enviar Foto' : 
-                     mission.validationType === 'link' ? 'Enviar Link' : '+'+pointValue+' pts');
+                     mission.validationType === 'link' ? 'Enviar Link' : '+'+pointValue+' <svg viewBox="0 0 100 100" width="14" height="14" style="margin-bottom:-2px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));"><circle cx="68" cy="30" r="28" fill="#F1863B" /><ellipse cx="38" cy="38" rx="16" ry="14" fill="#2E7D32" /><ellipse cx="55" cy="32" rx="14" ry="13" fill="#388E3C" /><ellipse cx="68" cy="38" rx="15" ry="13" fill="#2E7D32" /><ellipse cx="50" cy="28" rx="13" ry="12" fill="#43A047" /><ellipse cx="42" cy="44" rx="12" ry="10" fill="#388E3C" /><ellipse cx="62" cy="44" rx="12" ry="10" fill="#2E7D32" /><ellipse cx="52" cy="22" rx="10" ry="9" fill="#4CAF50" /><path d="M 46 50 L 42 78 C 42 80 44 82 50 82 C 56 82 58 80 58 78 L 54 50 Z" fill="#1B5E20" /><line x1="22" y1="82" x2="78" y2="82" stroke="#1B5E20" stroke-width="3" stroke-linecap="round" /></svg>');
                      
                 return `
                     <div class="mission-item">
@@ -852,7 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <tr>
                     <td><strong>${mission.name}</strong></td>
                     <td>${freqLabel}</td>
-                    <td>${mission.points} pts</td>
+                    <td>${mission.points} ML Coins</td>
                     <td><span class="status-badge ${mission.active ? 'status-unlocked' : 'status-locked'}">${statusLabel}</span></td>
                     <td>
                         <div style="display:flex; gap:5px; flex-wrap:wrap;">
@@ -1189,7 +1203,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h3>${prize.name}</h3>
                     ${prize.desc ? `<p class="store-card-desc">${prize.desc}</p>` : ''}
                     <div class="item-footer">
-                        <span class="price">${prize.points} pts</span>
+                        <span class="price" style="display:flex; align-items:center; gap:4px; justify-content:center;">
+                            ${prize.points}
+                            <svg viewBox="0 0 100 100" width="18" height="18" style="filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));">
+                                <circle cx="68" cy="30" r="28" fill="#F1863B" />
+                                <ellipse cx="38" cy="38" rx="16" ry="14" fill="#2E7D32" />
+                                <ellipse cx="55" cy="32" rx="14" ry="13" fill="#388E3C" />
+                                <ellipse cx="68" cy="38" rx="15" ry="13" fill="#2E7D32" />
+                                <ellipse cx="50" cy="28" rx="13" ry="12" fill="#43A047" />
+                                <ellipse cx="42" cy="44" rx="12" ry="10" fill="#388E3C" />
+                                <ellipse cx="62" cy="44" rx="12" ry="10" fill="#2E7D32" />
+                                <ellipse cx="52" cy="22" rx="10" ry="9" fill="#4CAF50" />
+                                <path d="M 46 50 L 42 78 C 42 80 44 82 50 82 C 56 82 58 80 58 78 L 54 50 Z" fill="#1B5E20" />
+                                <line x1="22" y1="82" x2="78" y2="82" stroke="#1B5E20" stroke-width="3" stroke-linecap="round" />
+                            </svg>
+                        </span>
                         <button class="btn-buy" onclick="buyItem('${prize.name}', ${prize.points})">Trocar</button>
                     </div>
                 </div>
@@ -1217,7 +1245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <tr>
                 <td><strong>${prize.order || 0}</strong></td>
                 <td><strong>${prize.name}</strong></td>
-                <td>${prize.points} pts</td>
+                <td>${prize.points} ML Coins</td>
                 <td><span class="status-badge ${prize.active ? 'status-unlocked' : 'status-locked'}">${prize.active ? 'Ativo' : 'Inativo'}</span></td>
                 <td>
                     <div style="display:flex; gap:5px; flex-wrap:wrap;">
@@ -1414,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.reconcileAllUsersPoints = async () => {
-        if (!confirm("⚠️ ATENÇÃO: Esta ferramenta irá ler o histórico de todos os usuários e recalcular os pontos totais com base nas missões concluídas. Isso irá sobrescrever os valores atuais no Firebase. Deseja continuar?")) return;
+        if (!confirm("⚠️ ATENÇÃO: Esta ferramenta irá ler o histórico de todos os usuários e recalcular os ML Coins totais com base nas missões concluídas. Isso irá sobrescrever os valores atuais no Firebase. Deseja continuar?")) return;
         
         const btn = event.target.closest('button');
         const originalText = btn.innerHTML;
@@ -1443,8 +1471,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Only count successful/valid transactions
                     if (tx.status === 'Concluído' || tx.status === 'Validando' || tx.status === 'Ativo') {
                         // 1. Try to parse points from the new format: "item (+X pts)" or "item (-X pts)"
-                        const earnedMatch = tx.item.match(/\(\+(\d+)\s+pts\)/);
-                        const spentMatch = tx.item.match(/\(\-(\d+)\s+pts\)/);
+                        const earnedMatch = tx.item.match(/\(\+(\d+)\s+(?:pts|ML Coins|Moura Coins)\)/);
+                        const spentMatch = tx.item.match(/\(\-(\d+)\s+(?:pts|ML Coins|Moura Coins)\)/);
 
                         if (earnedMatch) {
                             calculatedPoints += parseInt(earnedMatch[1]);
@@ -1469,7 +1497,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            alert(`✅ Sucesso! Auditoria finalizada. ${fixedCount} usuários tiveram seus pontos corrigidos.`);
+            alert(`✅ Sucesso! Auditoria finalizada. ${fixedCount} usuários tiveram seus ML Coins corrigidos.`);
         } catch (error) {
             console.error("Erro na auditoria:", error);
             alert("Erro ao processar auditoria. Verifique o console.");
@@ -1537,7 +1565,7 @@ document.addEventListener('DOMContentLoaded', () => {
         history.forEach(tx => {
             // Ignora transações recusadas/canceladas
             if (tx.status === 'Recusado' || tx.status === 'Cancelado') return;
-            const spentMatch = (tx.item || '').match(/\(-(\d+)\s*pts\)/);
+            const spentMatch = (tx.item || '').match(/\(-(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
             if (spentMatch) {
                 spent += parseInt(spentMatch[1]);
             }
@@ -1612,7 +1640,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (currentRankObj !== nextRankObj) {
             const pointsForNext = nextRankObj.min - spentPts;
-            if (heroSub) heroSub.innerHTML = `Resgate mais <strong>${pointsForNext} pontos</strong> em prêmios para subir ao nível <strong>${nextRankObj.name}</strong>.`;
+            if (heroSub) heroSub.innerHTML = `Resgate mais <strong>${pointsForNext} ML Coins</strong> em prêmios para subir ao nível <strong>${nextRankObj.name}</strong>.`;
             
             // Progress Bar Logic
             const range = nextRankObj.min - currentRankObj.min;
@@ -1749,7 +1777,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="pos">${index + 1}</span>
                     <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=${index === 0 ? 'F1863B' : '006837'}&color=fff" alt="">
                     <span class="name">${isMe ? 'Você' : user.username}</span>
-                    <span class="pts">${user.points.toLocaleString()} pts</span>
+                    <span class="pts" style="display:flex; align-items:center; gap:4px;">
+                        ${user.points.toLocaleString()} 
+                        <svg viewBox="0 0 100 100" width="16" height="16" style="filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));">
+                            <circle cx="68" cy="30" r="28" fill="#F1863B" />
+                            <ellipse cx="38" cy="38" rx="16" ry="14" fill="#2E7D32" />
+                            <ellipse cx="55" cy="32" rx="14" ry="13" fill="#388E3C" />
+                            <ellipse cx="68" cy="38" rx="15" ry="13" fill="#2E7D32" />
+                            <ellipse cx="50" cy="28" rx="13" ry="12" fill="#43A047" />
+                            <ellipse cx="42" cy="44" rx="12" ry="10" fill="#388E3C" />
+                            <ellipse cx="62" cy="44" rx="12" ry="10" fill="#2E7D32" />
+                            <ellipse cx="52" cy="22" rx="10" ry="9" fill="#4CAF50" />
+                            <path d="M 46 50 L 42 78 C 42 80 44 82 50 82 C 56 82 58 80 58 78 L 54 50 Z" fill="#1B5E20" />
+                            <line x1="22" y1="82" x2="78" y2="82" stroke="#1B5E20" stroke-width="3" stroke-linecap="round" />
+                        </svg>
+                    </span>
                 </div>
             `;
         }).join('');
@@ -1819,7 +1861,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const serverTimestamp = getServerTime();
                     const tx = {
                         user: username,
-                        item: `Ajuste Administrativo (${diff >= 0 ? '+' : ''}${diff} pts)`,
+                        item: `Ajuste Administrativo (${diff >= 0 ? '+' : ''}${diff} ML Coins)`,
                         date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
                         time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                         status: 'Concluído',
@@ -1921,7 +1963,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Store Logic
     window.buyItem = function(itemName, price) {
         if (userPoints >= price) {
-            const confirmPurchase = confirm(`Deseja trocar ${price} pontos por 1x ${itemName}?`);
+            const confirmPurchase = confirm(`Deseja trocar ${price} ML Coins por 1x ${itemName}?`);
             if (confirmPurchase) {
                 const now = new Date(getServerTime());
                 userPoints -= price;
@@ -1929,7 +1971,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const newTransaction = {
                     user: storedUser.username,
-                    item: `${itemName} (-${price} pts)`,
+                    item: `${itemName} (-${price} ML Coins)`,
                     date: now.toLocaleDateString('pt-BR'),
                     time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                     status: 'Concluído',
@@ -1965,7 +2007,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Sucesso! Você adquiriu: ${itemName}. Retire seu item no RH.`);
             }
         } else {
-            alert(`Pontos insuficientes! Você precisa de mais ${price - userPoints} pontos para este item.`);
+            alert(`ML Coins insuficientes! Você precisa de mais ${price - userPoints} ML Coins para este item.`);
         }
     };
 
@@ -1997,11 +2039,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.buyBoost = async function() {
         const price = 50;
         if (userPoints < price) {
-            alert(`Pontos insuficientes! Você precisa de mais ${price - userPoints} pontos.`);
+            alert(`ML Coins insuficientes! Você precisa de mais ${price - userPoints} ML Coins.`);
             return;
         }
 
-        // Validate via Firestore server timestamp (anti-cheat)
+        // Validate via Firebase server timestamp (anti-cheat)
         if (!dbAvailable) {
             alert('É necessário conexão com o servidor para ativar o Boost. Tente novamente.');
             return;
@@ -2028,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const confirmed = confirm(`Deseja ativar o Boost 2x por ${price} pontos?\nSeus pontos em missões serão dobrados por 24 horas.`);
+            const confirmed = confirm(`Deseja ativar o Boost 2x por ${price} ML Coins?\nSeus ML Coins em missões serão dobrados por 24 horas.`);
             if (!confirmed) return;
 
             // Calculate boost expiry: 24h from server time
@@ -2042,7 +2084,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = new Date(serverNow);
             const transaction = {
                 user: storedUser.username,
-                item: `Boost de Pontos 2x (24h) (-${price} pts)`,
+                item: `Boost de Pontos 2x (24h) (-${price} ML Coins)`,
                 date: now.toLocaleDateString('pt-BR'),
                 time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                 status: 'Ativo',
@@ -2080,7 +2122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initBoostUI();
 
     window.rejectTransaction = async (email, originalIndex) => {
-        if (!confirm('Deseja realmente recusar este crédito e remover os pontos do usuário?')) return;
+        if (!confirm('Deseja realmente recusar este crédito e remover os ML Coins do usuário?')) return;
         
         try {
             const userDoc = await db.collection("users").doc(email).get();
@@ -2098,7 +2140,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Parse points from item string
             let pointsToDeduct = 0;
-            const earnedMatch = tx.item.match(/\(\+(\d+)\s+pts\)/);
+            const earnedMatch = tx.item.match(/\(\+(\d+)\s+(?:pts|ML Coins|Moura Coins)\)/);
             if (earnedMatch) {
                 pointsToDeduct = parseInt(earnedMatch[1]);
             } else {
@@ -2145,7 +2187,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 points: newPoints
             });
             
-            alert(`Transação recusada e ${pointsToDeduct} pontos removidos com sucesso!`);
+            alert(`Transação recusada e ${pointsToDeduct} ML Coins removidos com sucesso!`);
             
         } catch (e) {
             console.error(e);
@@ -2347,7 +2389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         historyBody.innerHTML = pageData.map(tx => `
             <tr>
                 ${isAdmin ? `<td><strong>${tx.user}</strong></td>` : ''}
-                <td>${tx.item}</td>
+                <td>${(tx.item || '').replace(/pts|Moura Coins/gi, 'ML Coins')}</td>
                 ${isAdmin ? `
                     <td style="text-align:center;">
                         ${tx.evidenceId ? `<button class="view-photo-btn" onclick="viewPhoto(null, '${tx.evidenceId}')" title="Ver Comprovante">📸</button>` : (tx.photo ? `<button class="view-photo-btn" onclick="viewPhoto('${tx.photo}')" title="Ver Comprovante">📸</button>` : '')}
@@ -2448,7 +2490,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Admin Tool: Reconcile points for all users based on their history
     window.reconcileAllUsersPoints = async () => {
         if (!dbAvailable) { alert('Firebase não disponível.'); return; }
-        const confirmed = confirm('Isso vai recalcular e corrigir os pontos de TODOS os colaboradores com base no histórico de transações.\n\nDeseja continuar?');
+        const confirmed = confirm('Isso vai recalcular e corrigir os ML Coins de TODOS os colaboradores com base no histórico de transações.\n\nDeseja continuar?');
         if (!confirmed) return;
 
         // Known points for old entries that didn't have (+X pts) in the string
@@ -2495,7 +2537,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (tx.status === 'Recusado' || tx.status === 'Cancelado') return;
                     
                     const itemText = tx.item || '';
-                    const match = itemText.match(/\(([+-]?\d+)\s*pts?\)/i);
+                    const match = itemText.match(/\(([+-]?\d+)\s*(?:pts?|ML Coins|Moura Coins)\)/i);
                     
                     if (match) {
                         calculatedPoints += parseInt(match[1]);
@@ -2527,10 +2569,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             await batch.commit();
-            alert(`✅ Recálculo concluído!\n${usersUpdated} colaboradores tiveram os pontos corrigidos.\n\nRecarregue a página para ver as atualizações.`);
+            alert(`✅ Recálculo concluído!\n${usersUpdated} colaboradores tiveram os ML Coins corrigidos.\n\nRecarregue a página para ver as atualizações.`);
         } catch (err) {
             console.error('Erro ao recalcular pontos:', err);
-            alert('Erro ao recalcular pontos. Veja o console para detalhes.');
+            alert('Erro ao recalcular ML Coins. Veja o console para detalhes.');
         }
     };
 
@@ -2560,7 +2602,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </td>
                     <td>${deptDisplay}</td>
                     <td>${dirDisplay}</td>
-                    <td><strong>${user.points.toLocaleString()} pts</strong></td>
+                    <td><strong>${user.points.toLocaleString()} ML Coins</strong></td>
                 </tr>
             `;
         }).join('');
@@ -2742,7 +2784,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const serverTimestamp = getServerTime();
                 const transaction = {
                     user: storedUser.username,
-                    item: `Missão: Check-in Diário (+${earned} pts)`,
+                    item: `Missão: Check-in Diário (+${earned} ML Coins)`,
                     date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
                     time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                     status: 'Concluído',
@@ -2766,9 +2808,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateCheckinUI();
                 // IMPORTANT: Fire confetti BEFORE alert, because alert() blocks the JS thread
                 triggerCelebration();
-                addNotification(`Check-in diário realizado! +${earned} pts.`);
+                addNotification(`Check-in diário realizado! +${earned} ML Coins.`);
                 setTimeout(() => {
-                    alert(`Parabéns! Você ganhou ${earned} ponto(s) pelo seu check-in diário.`);
+                    alert(`Parabéns! Você ganhou ${earned} ML Coins pelo seu check-in diário.`);
                 }, 300);
             }
         });
@@ -2897,7 +2939,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const transaction = {
             user: storedUser.username,
-            item: `Missão: ${missionName} (+${earned} pts)`,
+            item: `Missão: ${missionName} (+${earned} ML Coins)`,
             date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
             time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
             status: 'Concluído',
@@ -2919,9 +2961,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCustomMissions();
         // IMPORTANT: Fire confetti BEFORE alert, because alert() blocks the JS thread
         triggerCelebration();
-        addNotification(`${missionName} concluída! +${earned} pts.`);
+        addNotification(`${missionName} concluída! +${earned} ML Coins.`);
         setTimeout(() => {
-            alert(`Parabéns! Você ganhou ${earned} ponto(s) por completar: ${missionName}`);
+            alert(`Parabéns! Você ganhou ${earned} ML Coins por completar: ${missionName}`);
         }, 300);
     };
 
@@ -2955,7 +2997,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const transaction = {
                 user: storedUser.username,
-                item: `Missão: ${missionName} (+${earned} pts)`,
+                item: `Missão: ${missionName} (+${earned} ML Coins)`,
                 date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
                 time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                 status: 'Validando',
@@ -3002,9 +3044,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Fire confetti BEFORE alert (alert blocks the JS render thread)
             triggerCelebration();
-            addNotification(`${missionName} enviada para validação! +${earned} pts.`);
+            addNotification(`${missionName} enviada para validação! +${earned} ML Coins.`);
             setTimeout(() => {
-                alert(`Foto enviada! Você ganhou ${earned} pontos por: ${missionName}`);
+                alert(`Foto enviada! Você ganhou ${earned} ML Coins por: ${missionName}`);
             }, 300);
 
         } catch (fatalErr) {
@@ -3039,7 +3081,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const transaction = {
             user: storedUser.username,
-            item: `Missão: ${missionName} (+${earned} pts)`,
+            item: `Missão: ${missionName} (+${earned} ML Coins)`,
             date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
             time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
             status: 'Validando',
@@ -3081,9 +3123,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCustomMissions();
         // IMPORTANT: Fire confetti BEFORE alert, because alert() blocks the JS thread
         triggerCelebration();
-        addNotification(`${missionName} enviada para validação! +${earned} pts.`);
+        addNotification(`${missionName} enviada para validação! +${earned} ML Coins.`);
         setTimeout(() => {
-            alert(`Link enviado! Você ganhou ${earned} pontos por: ${missionName}`);
+            alert(`Link enviado! Você ganhou ${earned} ML Coins por: ${missionName}`);
         }, 300);
     };
 

@@ -52,6 +52,7 @@
     <div class="controls">
         <button class="btn btn-audit" onclick="runAudit()">🔎 Executar Auditoria</button>
         <button class="btn btn-fix" id="btn-fix" onclick="fixAll()" disabled>🔧 Corrigir Todas as Divergências</button>
+        <button class="btn" id="btn-fix-dates" onclick="fixWrongDates()" style="background:#7b1fa2; color:white; padding:12px 28px; border:none; border-radius:8px; cursor:pointer; font-size:15px; font-weight:600; margin:5px;">📅 Corrigir Datas 28/05 → 01/06</button>
         <button class="btn btn-export" id="btn-export" onclick="exportCSV()" style="display:none">📥 Exportar CSV</button>
     </div>
 
@@ -74,6 +75,91 @@
     <script>
         let auditResults = [];
 
+        // ── Corrigir datas erradas (bug da máquina do tempo 28/05) ────────────────
+        async function fixWrongDates() {
+            const WRONG_DATE = '28/05/2026';
+            const CORRECT_DATE = '01/06/2026';
+            // Janela de tempo do bug: entre 00:00 do dia 29/05 e 23:59 do dia 01/06 (em ms)
+            // Qualquer registro salvo APÓS essa janela com data=28/05 é fruto do bug.
+            // serverTime do bug: o documento _server_time estava travado em ~28/05 18:13
+            // Registros legítimos do dia 28/05 têm serverTime < 1748476800000 (29/05 00:00 BRT)
+            const REAL_END_OF_28 = new Date('2026-05-29T03:00:00Z').getTime(); // 29/05 00:00 BRT = 29/05 03:00 UTC
+
+            const btn = document.getElementById('btn-fix-dates');
+            btn.disabled = true;
+            btn.textContent = '⏳ Corrigindo...';
+
+            showStatus('Buscando registros com data incorreta no Firebase...', 'info');
+
+            try {
+                const usersSnap = await db.collection('users').get({ source: 'server' });
+                const batch = db.batch();
+                let totalFixed = 0;
+                let usersAffected = 0;
+                const report = [];
+
+                usersSnap.forEach(doc => {
+                    const user = doc.data();
+                    if (!user.history || !Array.isArray(user.history)) return;
+
+                    let changed = false;
+                    const updatedHistory = user.history.map(tx => {
+                        // Identifica entradas com a data do bug E que foram salvas DEPOIS do dia 28/05 real
+                        // (ou seja, serverTime > fim do dia 28/05 no horário de Brasília)
+                        const isBugDate = tx.date === WRONG_DATE;
+                        const savedAfterBug = !tx.serverTime || tx.serverTime >= REAL_END_OF_28;
+
+                        if (isBugDate && savedAfterBug) {
+                            changed = true;
+                            totalFixed++;
+                            report.push(`${user.email}: "${tx.item}" → ${WRONG_DATE} corrigido para ${CORRECT_DATE}`);
+                            return { ...tx, date: CORRECT_DATE };
+                        }
+                        return tx;
+                    });
+
+                    if (changed) {
+                        usersAffected++;
+                        batch.update(doc.ref, { history: updatedHistory });
+                    }
+                });
+
+                if (totalFixed === 0) {
+                    showStatus('✅ Nenhum registro com data incorreta encontrado. Tudo está correto!', 'success');
+                    btn.disabled = false;
+                    btn.textContent = '📅 Corrigir Datas 28/05 → 01/06';
+                    return;
+                }
+
+                await batch.commit();
+
+                showStatus(
+                    `✅ Correção concluída! ${totalFixed} registros corrigidos em ${usersAffected} colaboradores.`,
+                    'success'
+                );
+
+                // Show report
+                const results = document.getElementById('results');
+                results.innerHTML = `
+                    <h3 style="color:#ce93d8; margin:20px 0 10px;">📋 Relatório de Correção de Datas</h3>
+                    <div style="background:#1a0a2e; border-radius:8px; padding:16px; font-size:13px; color:#ccc; max-height:400px; overflow-y:auto;">
+                        ${report.map(r => `<div style="padding:4px 0; border-bottom:1px solid #333;">✔ ${r}</div>`).join('')}
+                    </div>
+                    <p style="color:#aaa; font-size:12px; margin-top:10px; text-align:center;">
+                        Recarregue a plataforma (CTRL+F5) para ver os dados atualizados.
+                    </p>
+                `;
+
+            } catch (err) {
+                console.error('Erro ao corrigir datas:', err);
+                showStatus(`❌ Erro ao corrigir: ${err.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📅 Corrigir Datas 28/05 → 01/06';
+            }
+        }
+
+
         // Valores conhecidos de missões do sistema
         const KNOWN_MISSION_POINTS = {
             'Check-in Diário': 1,
@@ -94,11 +180,11 @@
         }
 
         function parsePointsFromItem(itemText, customMissionPoints = {}) {
-            // Formato novo: "Missão: Check-in Diário (+1 pts)" ou "Caneca (-450 pts)"
-            const earnedMatch = itemText.match(/\(\+(\d+)\s*pts?\)/);
+            // Formato novo: "Missão: Check-in Diário (+1 ML Coins)" ou "Caneca (-450 ML Coins)" (ou legado: pts / Moura Coins)
+            const earnedMatch = itemText.match(/\(\+(\d+)\s*(?:pts?|ML Coins|Moura Coins)\)/);
             if (earnedMatch) return parseInt(earnedMatch[1]);
 
-            const spentMatch = itemText.match(/\(-(\d+)\s*pts?\)/);
+            const spentMatch = itemText.match(/\(-(\d+)\s*(?:pts?|ML Coins|Moura Coins)\)/);
             if (spentMatch) return -parseInt(spentMatch[1]);
 
             // Formato antigo: "Missão: Check-in Diário" (sem pontos no texto)
@@ -201,15 +287,16 @@
                     
                     dedupedHistory.forEach((tx, i) => {
                         const pts = parsePointsFromItem(tx.item || '', customMissionPoints);
+                        const displayItem = (tx.item || '').replace(/pts|Moura Coins/gi, 'ML Coins');
                         
                         // Se a transação foi recusada/cancelada, ela não deve somar pontos.
                         // Para fins de auditoria, mostramos ela como um valor negativo se for uma missão (que seria positiva).
                         if (tx.status === 'Recusado' || tx.status === 'Cancelado') {
                             if (pts !== null && pts > 0) {
                                 // Explicitly show that it was subtracted/negated
-                                details.push(`<div style="color:#f44336;">${tx.date || '??'} | ${tx.item} → -${pts} pts (RECUSADO)</div>`);
+                                details.push(`<div style="color:#f44336;">${tx.date || '??'} | ${displayItem} → -${pts} ML Coins (RECUSADO)</div>`);
                             } else {
-                                details.push(`<div style="color:#f44336; text-decoration: line-through;">${tx.date || '??'} | ${tx.item} (${tx.status.toUpperCase()})</div>`);
+                                details.push(`<div style="color:#f44336; text-decoration: line-through;">${tx.date || '??'} | ${displayItem} (${tx.status.toUpperCase()})</div>`);
                             }
                             return; // Don't add to calculatedPoints
                         }
@@ -218,10 +305,10 @@
                             calculatedPoints += pts;
                             const sign = pts >= 0 ? '+' : '';
                             const cls = pts >= 0 ? 'earned' : 'spent';
-                            details.push(`<div class="${cls}">${tx.date || '??'} | ${tx.item} → ${sign}${pts} pts</div>`);
+                            details.push(`<div class="${cls}">${tx.date || '??'} | ${displayItem} → ${sign}${pts} ML Coins</div>`);
                         } else {
                             unknownCount++;
-                            details.push(`<div style="color:#ffd54f">⚠ ${tx.date || '??'} | ${tx.item} → Pts DESCONHECIDOS</div>`);
+                            details.push(`<div style="color:#ffd54f">⚠ ${tx.date || '??'} | ${displayItem} → ML Coins DESCONHECIDOS</div>`);
                         }
                     });
 

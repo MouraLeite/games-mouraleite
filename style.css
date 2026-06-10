@@ -433,6 +433,20 @@ body {
     color: var(--secondary-orange);
 }
 
+.moura-coins-pill {
+    gap: 6px;
+}
+
+.moura-coins-logo {
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 2px rgba(0, 104, 55, 0.3));
+    transition: transform 0.3s ease;
+}
+
+.moura-coins-pill:hover .moura-coins-logo {
+    transform: scale(1.15) rotate(-8deg);
+}
+
 .notification-btn {
     width: 45px;
     height: 45px;

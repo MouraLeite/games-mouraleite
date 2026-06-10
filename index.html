@@ -96,8 +96,23 @@
                     <input type="text" placeholder="Buscar missões, colegas...">
                 </div>
                 <div class="user-stats-top">
-                    <div class="stat-pill">
-                        <i class="fa-solid fa-coins"></i>
+                    <div class="stat-pill moura-coins-pill">
+                        <svg class="moura-coins-logo" viewBox="0 0 100 100" width="24" height="24">
+                            <!-- Sol laranja -->
+                            <circle cx="68" cy="30" r="28" fill="#F1863B" />
+                            <!-- Copa da árvore -->
+                            <ellipse cx="38" cy="38" rx="16" ry="14" fill="#2E7D32" />
+                            <ellipse cx="55" cy="32" rx="14" ry="13" fill="#388E3C" />
+                            <ellipse cx="68" cy="38" rx="15" ry="13" fill="#2E7D32" />
+                            <ellipse cx="50" cy="28" rx="13" ry="12" fill="#43A047" />
+                            <ellipse cx="42" cy="44" rx="12" ry="10" fill="#388E3C" />
+                            <ellipse cx="62" cy="44" rx="12" ry="10" fill="#2E7D32" />
+                            <ellipse cx="52" cy="22" rx="10" ry="9" fill="#4CAF50" />
+                            <!-- Tronco -->
+                            <path d="M 46 50 L 42 78 C 42 80 44 82 50 82 C 56 82 58 80 58 78 L 54 50 Z" fill="#1B5E20" />
+                            <!-- Linha do chão -->
+                            <line x1="22" y1="82" x2="78" y2="82" stroke="#1B5E20" stroke-width="3" stroke-linecap="round" />
+                        </svg>
                         <span id="user-points">0</span>
                     </div>
                     <div class="stat-pill">
@@ -130,7 +145,7 @@
                             <div id="hero-rank-icon" class="hero-rank-badge"></div>
                             <div class="hero-text">
                                 <h1>Olá, Alexsanderson Landuci! 👋</h1>
-                                <p id="hero-rank-msg">Você está a apenas <strong>500 pontos</strong> de subir para o
+                                <p id="hero-rank-msg">Você está a apenas <strong>500 ML Coins</strong> de subir para o
                                     nível <strong>Platina</strong>.</p>
 
                                 <div class="rank-progress-wrapper">
@@ -232,7 +247,7 @@
                 <section id="missoes-page" class="page-section hidden">
                     <div class="section-title">
                         <h2>Missões e Integração</h2>
-                        <p>Complete tarefas para ganhar pontos e fortalecer a equipe.</p>
+                        <p>Complete tarefas para ganhar ML Coins e fortalecer a equipe.</p>
                     </div>
                     <div class="quests-grid" id="quests-grid">
                         <p style="padding:1rem; color:#999; text-align:center; grid-column: 1 / -1;">Carregando missões...</p>
@@ -243,16 +258,30 @@
                 <section id="loja-page" class="page-section hidden">
                     <div class="section-title">
                         <h2>Loja de Prêmios</h2>
-                        <p>Troque seus pontos por itens exclusivos da Moura Leite.</p>
+                        <p>Troque seus ML Coins por itens exclusivos da Moura Leite.</p>
                     </div>
                     <div class="store-grid" id="store-grid-container">
                         <!-- Custom prizes injected here -->
                         <div class="store-card store-card--boost" id="boost-card">
                             <div class="item-img boost-icon"><i class="fa-solid fa-bolt"></i></div>
                             <h3>Boost de Pontos <span class="boost-badge">2x</span></h3>
-                            <p class="store-card-desc">Dobra seus pontos em missões por 1 dia inteiro. Limite: 1x por mês.</p>
+                            <p class="store-card-desc">Dobra seus ML Coins em missões por 1 dia inteiro. Limite: 1x por mês.</p>
                             <div class="item-footer">
-                                <span class="price">50 pts</span>
+                                <span class="price" style="display:flex; align-items:center; gap:4px;">
+                                    50 
+                                    <svg viewBox="0 0 100 100" width="18" height="18" style="filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));">
+                                        <circle cx="68" cy="30" r="28" fill="#F1863B" />
+                                        <ellipse cx="38" cy="38" rx="16" ry="14" fill="#2E7D32" />
+                                        <ellipse cx="55" cy="32" rx="14" ry="13" fill="#388E3C" />
+                                        <ellipse cx="68" cy="38" rx="15" ry="13" fill="#2E7D32" />
+                                        <ellipse cx="50" cy="28" rx="13" ry="12" fill="#43A047" />
+                                        <ellipse cx="42" cy="44" rx="12" ry="10" fill="#388E3C" />
+                                        <ellipse cx="62" cy="44" rx="12" ry="10" fill="#2E7D32" />
+                                        <ellipse cx="52" cy="22" rx="10" ry="9" fill="#4CAF50" />
+                                        <path d="M 46 50 L 42 78 C 42 80 44 82 50 82 C 56 82 58 80 58 78 L 54 50 Z" fill="#1B5E20" />
+                                        <line x1="22" y1="82" x2="78" y2="82" stroke="#1B5E20" stroke-width="3" stroke-linecap="round" />
+                                    </svg>
+                                </span>
                                 <button class="btn-buy btn-boost" id="boost-btn" onclick="buyBoost()">Ativar</button>
                             </div>
                         </div>
@@ -375,7 +404,7 @@
 
                     <div class="admin-actions-card glass-card" style="margin-top: 20px; padding: 20px; text-align: center;">
                         <h3>🛠️ Ferramentas de Auditoria</h3>
-                        <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Use estas ferramentas se os pontos dos colaboradores estiverem incorretos ou o histórico tiver entradas duplicadas.</p>
+                        <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Use estas ferramentas se os ML Coins dos colaboradores estiverem incorretos ou o histórico tiver entradas duplicadas.</p>
                         <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                             <button onclick="reconcileAllUsersPoints()" class="btn-buy" style="background: #e67e22; padding: 12px 24px;">
                                 <i class="fa-solid fa-sync"></i> Recalcular e Corrigir Pontos de Todos
@@ -618,44 +647,44 @@
             <span class="close-modal" id="close-ranks">&times;</span>
             <div class="section-title">
                 <h2>Níveis e Benefícios</h2>
-                <p>Suba de nível resgatando prêmios! Quanto mais você utilizar seus pontos, maior o seu nível.</p>
+                <p>Suba de nível resgatando prêmios! Quanto mais você utilizar seus ML Coins, maior o seu nível.</p>
             </div>
 
             <div class="ranks-grid">
                 <div class="rank-benefit-card">
                     <div class="rank-badge rank-iniciante"><i class="fa-solid fa-seedling"></i></div>
                     <h4>Iniciante</h4>
-                    <p>0 - 500 pts gastos</p>
+                    <p>0 - 500 ML Coins gastos</p>
                     <p><em>Início da jornada.</em></p>
                 </div>
                 <div class="rank-benefit-card">
                     <div class="rank-badge rank-bronze"><i class="fa-solid fa-medal"></i></div>
                     <h4>Bronze</h4>
-                    <p>501 - 1.500 pts gastos</p>
-                    <p><strong>Bônus:</strong> 1.1x pontos em missões.</p>
+                    <p>501 - 1.500 ML Coins gastos</p>
+                    <p><strong>Bônus:</strong> 1.1x ML Coins em missões.</p>
                 </div>
                 <div class="rank-benefit-card">
                     <div class="rank-badge rank-prata"><i class="fa-solid fa-award"></i></div>
                     <h4>Prata</h4>
-                    <p>1.501 - 3.000 pts gastos</p>
-                    <p><strong>Bônus:</strong> 1.2x pontos em missões.</p>
+                    <p>1.501 - 3.000 ML Coins gastos</p>
+                    <p><strong>Bônus:</strong> 1.2x ML Coins em missões.</p>
                 </div>
                 <div class="rank-benefit-card">
                     <div class="rank-badge rank-ouro"><i class="fa-solid fa-trophy"></i></div>
                     <h4>Ouro</h4>
-                    <p>3.001 - 6.000 pts gastos</p>
-                    <p><strong>Bônus:</strong> 1.5x pontos em missões.</p>
+                    <p>3.001 - 6.000 ML Coins gastos</p>
+                    <p><strong>Bônus:</strong> 1.5x ML Coins em missões.</p>
                 </div>
                 <div class="rank-benefit-card">
                     <div class="rank-badge rank-platina"><i class="fa-solid fa-crown"></i></div>
                     <h4>Platina</h4>
-                    <p>6.001 - 10.000 pts gastos</p>
-                    <p><strong>Bônus:</strong> 2.0x pontos em missões.</p>
+                    <p>6.001 - 10.000 ML Coins gastos</p>
+                    <p><strong>Bônus:</strong> 2.0x ML Coins em missões.</p>
                 </div>
                 <div class="rank-benefit-card">
                     <div class="rank-badge rank-diamante"><i class="fa-solid fa-gem"></i></div>
                     <h4>Diamante</h4>
-                    <p>10.000+ pts gastos</p>
+                    <p>10.000+ ML Coins gastos</p>
                     <p><strong>Bônus:</strong> Missões e prêmios exclusivos.</p>
                 </div>
             </div>
