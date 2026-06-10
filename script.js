@@ -1111,7 +1111,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const subscribeSharedPrizes = () => {
         if (!dbAvailable || !prizesCollection) return;
-        prizesCollection.orderBy('createdAt', 'asc').onSnapshot((snapshot) => {
+        prizesCollection.orderBy('createdAt', 'asc').onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+            // Skip events triggered by local writes (e.g. our own stock decrement transaction)
+            // to avoid reverting optimistic UI updates before Firestore confirms
+            if (snapshot.metadata.hasPendingWrites) return;
+
             if (!snapshot.empty) {
                 sharedPrizeCache = [];
                 snapshot.forEach((doc) => {
@@ -1197,8 +1201,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? `<div class="item-img"><img src="${prize.image}" style="max-width: 90%; max-height: 120px; object-fit: contain; border-radius: 8px;"></div>`
                 : `<div class="item-img">${getIconHTML(prize.icon || 'fa-gift', prize.color || '#006837')}</div>`;
             
+            // Stock logic: -1 = unlimited, 0 = sold out, >0 = available
+            const qty = (prize.quantity === undefined || prize.quantity === null) ? -1 : parseInt(prize.quantity);
+            const isSoldOut = qty === 0;
+            const isUnlimited = qty === -1;
+            
+            let stockBadgeHTML = '';
+            if (isSoldOut) {
+                stockBadgeHTML = `<div class="stock-badge stock-badge--esgotado"><i class="fa-solid fa-ban"></i> Esgotado</div>`;
+            } else if (!isUnlimited && qty <= 5) {
+                stockBadgeHTML = `<div class="stock-badge stock-badge--low"><i class="fa-solid fa-box-open"></i> Últimas ${qty} unidades</div>`;
+            } else if (!isUnlimited) {
+                stockBadgeHTML = `<div class="stock-badge stock-badge--available"><i class="fa-solid fa-box"></i> ${qty} em estoque</div>`;
+            }
+
             const html = `
-                <div class="store-card custom-prize-card">
+                <div class="store-card custom-prize-card${isSoldOut ? ' store-card--esgotado' : ''}">
+                    ${stockBadgeHTML}
                     ${imgHTML}
                     <h3>${prize.name}</h3>
                     ${prize.desc ? `<p class="store-card-desc">${prize.desc}</p>` : ''}
@@ -1218,7 +1237,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <line x1="22" y1="82" x2="78" y2="82" stroke="#1B5E20" stroke-width="3" stroke-linecap="round" />
                             </svg>
                         </span>
-                        <button class="btn-buy" onclick="buyItem('${prize.name}', ${prize.points})">Trocar</button>
+                        <button class="btn-buy" ${isSoldOut ? 'disabled' : ''} onclick="buyItem('${prize.name}', ${prize.points}, '${prize.id}')">${isSoldOut ? 'Esgotado' : 'Trocar'}</button>
                     </div>
                 </div>
             `;
@@ -1241,11 +1260,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        body.innerHTML = prizes.map(prize => `
+        body.innerHTML = prizes.map(prize => {
+            const qty = (prize.quantity === undefined || prize.quantity === null) ? -1 : parseInt(prize.quantity);
+            const stockLabel = qty === -1 ? '<span style="color:#999;">Ilimitado</span>' : qty === 0 ? '<span style="color:#f44336; font-weight:700;">Esgotado</span>' : `<span style="color:${qty <= 5 ? '#e67e22' : '#4caf50'}; font-weight:700;">${qty} un.</span>`;
+            return `
             <tr>
                 <td><strong>${prize.order || 0}</strong></td>
                 <td><strong>${prize.name}</strong></td>
                 <td>${prize.points} ML Coins</td>
+                <td>${stockLabel}</td>
                 <td><span class="status-badge ${prize.active ? 'status-unlocked' : 'status-locked'}">${prize.active ? 'Ativo' : 'Inativo'}</span></td>
                 <td>
                     <div style="display:flex; gap:5px; flex-wrap:wrap;">
@@ -1254,7 +1277,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
     };
 
     const handlePrizeSubmit = async (e) => {
@@ -1269,6 +1293,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const color = document.getElementById('prize-color').value;
         const active = document.getElementById('prize-active').checked;
         const order = parseInt(document.getElementById('prize-order').value) || 0;
+        const quantityRaw = document.getElementById('prize-quantity') ? parseInt(document.getElementById('prize-quantity').value) : -1;
+        const quantity = isNaN(quantityRaw) ? -1 : quantityRaw;
         const imageB64 = form.dataset.imageB64 || null;
 
         try {
@@ -1282,6 +1308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 color,
                 active,
                 order,
+                quantity,
                 updatedAt: new Date().toISOString()
             };
             if (imageB64) prizeObj.image = imageB64;
@@ -1394,6 +1421,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('prize-color').value = prize.color || '#006837';
         document.getElementById('prize-active').checked = prize.active !== false;
         document.getElementById('prize-order').value = prize.order || 0;
+        if (document.getElementById('prize-quantity')) {
+            const qty = (prize.quantity === undefined || prize.quantity === null) ? -1 : prize.quantity;
+            document.getElementById('prize-quantity').value = qty;
+        }
 
         const form = document.getElementById('prize-form');
         form.dataset.editingId = prize.id;
@@ -1961,7 +1992,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Store Logic
-    window.buyItem = function(itemName, price) {
+    window.buyItem = function(itemName, price, prizeId) {
         if (userPoints >= price) {
             const confirmPurchase = confirm(`Deseja trocar ${price} ML Coins por 1x ${itemName}?`);
             if (confirmPurchase) {
@@ -1996,6 +2027,39 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         localStorage.setItem('moura_leite_all_users', JSON.stringify(allUsers));
                     } catch(e) {}
+                }
+
+                // Decrement prize stock if prizeId is provided
+                if (prizeId) {
+                    // 1. Update localStorage and cache immediately (optimistic UI)
+                    const prizes = JSON.parse(localStorage.getItem('moura_leite_prizes')) || [];
+                    const pIdx = prizes.findIndex(p => p.id === prizeId);
+                    if (pIdx !== -1) {
+                        const currentQty = (prizes[pIdx].quantity === undefined || prizes[pIdx].quantity === null) ? -1 : parseInt(prizes[pIdx].quantity);
+                        if (currentQty > 0) {
+                            const newQty = currentQty - 1;
+                            prizes[pIdx].quantity = newQty;
+                            try { localStorage.setItem('moura_leite_prizes', JSON.stringify(prizes)); } catch(e) {}
+
+                            // Update in-memory cache so onSnapshot doesn't revert
+                            const cIdx = sharedPrizeCache.findIndex(p => p.id === prizeId);
+                            if (cIdx !== -1) sharedPrizeCache[cIdx].quantity = newQty;
+
+                            // 2. Firestore: use runTransaction for atomic decrement (prevents race with onSnapshot)
+                            if (dbAvailable && prizesCollection) {
+                                const prizeDocRef = prizesCollection.doc(prizeId);
+                                db.runTransaction(async (transaction) => {
+                                    const snap = await transaction.get(prizeDocRef);
+                                    if (!snap.exists) return;
+                                    const serverQty = (snap.data().quantity === undefined || snap.data().quantity === null) ? -1 : parseInt(snap.data().quantity);
+                                    if (serverQty > 0) {
+                                        transaction.update(prizeDocRef, { quantity: serverQty - 1 });
+                                    }
+                                }).catch(e => console.warn('Erro na transação de estoque:', e));
+                            }
+                        }
+                    }
+                    renderCustomPrizes();
                 }
 
                 // Sync to Firestore

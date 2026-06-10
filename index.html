@@ -588,6 +588,10 @@
                                     <label for="prize-order">Posição/Ordem (Ex: 1, 2, 3...)</label>
                                     <input type="number" id="prize-order" value="0" min="0">
                                 </div>
+                                <div class="form-group">
+                                    <label for="prize-quantity">Quantidade em Estoque (-1 = Ilimitado)</label>
+                                    <input type="number" id="prize-quantity" value="-1" min="-1" placeholder="-1 para ilimitado">
+                                </div>
                                 <div class="form-group" style="display:flex; flex-direction:column; justify-content:center;">
                                     <label for="prize-active">Ativo na Loja</label>
                                     <div style="margin-top:10px;">
@@ -616,6 +620,7 @@
                                     <th>Ordem</th>
                                     <th>Nome</th>
                                     <th>Pontos</th>
+                                    <th>Estoque</th>
                                     <th>Status</th>
                                     <th>Ações</th>
                                 </tr>

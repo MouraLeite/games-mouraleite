@@ -1051,6 +1051,7 @@ body {
     transition: var(--transition);
     display: flex;
     flex-direction: column;
+    align-items: center;
     height: 100%;
 }
 
@@ -1059,6 +1060,7 @@ body {
 }
 
 .item-img {
+    width: 100%;
     height: 140px;
     background: #f8f9fa;
     border-radius: 16px;
@@ -1086,6 +1088,8 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-top: auto;
+    gap: 12px;
+    width: 100%;
 }
 
 .price {
@@ -1111,6 +1115,62 @@ body {
     background: #e0e0e0;
     color: #999;
     cursor: not-allowed;
+}
+
+/* Stock Badges */
+.stock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+    letter-spacing: 0.3px;
+}
+
+.stock-badge--esgotado {
+    background: rgba(244, 67, 54, 0.12);
+    color: #c62828;
+    border: 1px solid rgba(244, 67, 54, 0.25);
+}
+
+.stock-badge--low {
+    background: rgba(255, 152, 0, 0.12);
+    color: #e65100;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    animation: lowStockPulse 2s ease-in-out infinite;
+}
+
+.stock-badge--available {
+    background: rgba(76, 175, 80, 0.1);
+    color: #2e7d32;
+    border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+@keyframes lowStockPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.3); }
+    50%       { box-shadow: 0 0 0 5px rgba(255, 152, 0, 0); }
+}
+
+/* Sold-out card style */
+.store-card--esgotado {
+    opacity: 0.7;
+    filter: grayscale(0.5);
+    pointer-events: none; /* prevent hover effects on card */
+    position: relative;
+}
+
+.store-card--esgotado .btn-buy {
+    pointer-events: all; /* keep button accessible (though disabled) */
+    background: #bdbdbd !important;
+    color: #757575 !important;
+    cursor: not-allowed;
+}
+
+.store-card--esgotado:hover {
+    transform: none !important;
 }
 
 /* Boost Card */
