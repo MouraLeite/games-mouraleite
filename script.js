@@ -576,6 +576,216 @@ document.addEventListener('DOMContentLoaded', () => {
                 <path d="M 48 50 C 55 50, 55 60, 50 62 C 45 64, 45 74, 52 74" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" />
             </svg>`;
         }
+        if (iconName === 'svg-choco') {
+            // Fully hardcoded chocolate palette — no color param needed, just like the capsule icons
+            // Main bar:    #7B4A2D (milk chocolate)
+            // Segments:    #5C3317 (dark chocolate grooves)
+            // Broken piece: #A0623A (lighter, catching the light)
+            // Wrapper foil: #D4A96A (gold/cream wrapper strip at top)
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.35));">
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-linejoin="round">
+
+                    <!-- Main bar (tilted -8deg for dynamism) -->
+                    <g transform="rotate(-8, 46, 55)">
+
+                        <!-- Golden wrapper strip at top of bar -->
+                        <rect x="10" y="25" width="72" height="8" rx="3" ry="3"
+                              fill="#D4A96A" stroke="#1A1A1A" stroke-width="2.5" />
+
+                        <!-- Bar body — milk chocolate -->
+                        <rect x="10" y="32" width="72" height="40" rx="4" ry="4"
+                              fill="#7B4A2D" stroke="#1A1A1A" stroke-width="3.5" />
+
+                        <!-- Segment horizontal grooves (darker chocolate recesses) -->
+                        <line x1="11" y1="46" x2="81" y2="46" stroke="#5C3317" stroke-width="3" />
+                        <line x1="11" y1="59" x2="81" y2="59" stroke="#5C3317" stroke-width="3" />
+
+                        <!-- Segment vertical grooves -->
+                        <line x1="30" y1="33" x2="30" y2="71" stroke="#5C3317" stroke-width="3" />
+                        <line x1="50" y1="33" x2="50" y2="71" stroke="#5C3317" stroke-width="3" />
+                        <line x1="70" y1="33" x2="70" y2="71" stroke="#5C3317" stroke-width="3" />
+
+                        <!-- Shine highlights (top-left gloss) -->
+                        <path d="M 14 35 Q 24 32 30 38" fill="none" stroke="rgba(255,255,255,0.50)" stroke-width="3" stroke-linecap="round" />
+                        <path d="M 14 42 Q 20 39 25 43" fill="none" stroke="rgba(255,255,255,0.30)" stroke-width="2" stroke-linecap="round" />
+
+                    </g>
+
+                    <!-- Broken-off piece (top-right, floating, lighter tone) -->
+                    <g transform="rotate(18, 84, 18)">
+                        <!-- Piece wrapper strip -->
+                        <rect x="69" y="8"  width="22" height="5" rx="2" ry="2"
+                              fill="#D4A96A" stroke="#1A1A1A" stroke-width="2" />
+                        <!-- Piece body — lighter chocolate (catching light) -->
+                        <rect x="69" y="12" width="22" height="13" rx="3" ry="3"
+                              fill="#A0623A" stroke="#1A1A1A" stroke-width="3" />
+                        <!-- One groove on the piece -->
+                        <line x1="80" y1="13" x2="80" y2="24" stroke="#7B4A2D" stroke-width="2.5" />
+                        <!-- Small shine on piece -->
+                        <path d="M 71 14 Q 75 12 79 15" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2" stroke-linecap="round" />
+                    </g>
+
+                    <!-- Jagged snap/break line connecting bar to piece -->
+                    <polyline points="70,26 74,19 78,23 82,16"
+                              fill="none" stroke="#1A1A1A" stroke-width="3.5"
+                              stroke-linecap="round" stroke-linejoin="round"
+                              transform="rotate(-8, 46, 55)" />
+
+                </g>
+            </svg>`;
+        }
+        if (iconName === 'svg-cookie') {
+            // Fully hardcoded Cacau Show cookie palette
+            // Cookie base:   #C8873A (golden baked dough)
+            // Cookie edge:   #A0622A (slightly darker border bake)
+            // Choco chips:   #2C1500 (very dark chocolate)
+            // Chip shine:    #5C3317 (lighter chip edge)
+            // Crumbs:        #D4A96A (light crumb pieces)
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.35));">
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-linejoin="round">
+
+                    <!-- Cookie base — organic irregular circle (baked look) -->
+                    <path d="M 50 10
+                             C 62 8,  76 14, 82 26
+                             C 90 38, 88 54, 80 64
+                             C 74 72, 80 80, 72 86
+                             C 64 92, 50 92, 40 88
+                             C 28 83, 16 74, 13 60
+                             C 10 46, 14 30, 24 20
+                             C 32 12, 40 12, 50 10 Z"
+                          fill="#C8873A" stroke="#1A1A1A" stroke-width="3.5" />
+
+                    <!-- Inner baked texture ring (slightly darker dough near edge) -->
+                    <path d="M 50 16
+                             C 60 14, 72 20, 77 30
+                             C 83 42, 81 56, 74 64
+                             C 68 71, 53 84, 42 81
+                             C 30 78, 20 68, 18 56
+                             C 16 44, 20 30, 30 22
+                             C 37 16, 42 18, 50 16 Z"
+                          fill="none" stroke="#A0622A" stroke-width="2" stroke-dasharray="4 3" />
+
+                    <!-- Chocolate chips — dark irregular drops -->
+                    <!-- Chip 1 (top-left area) -->
+                    <ellipse cx="34" cy="32" rx="6" ry="5" transform="rotate(-20,34,32)"
+                             fill="#2C1500" stroke="#1A1A1A" stroke-width="2" />
+                    <path d="M 30 30 Q 33 27 36 30" fill="none" stroke="#5C3317" stroke-width="1.5" stroke-linecap="round" />
+
+                    <!-- Chip 2 (top-center) -->
+                    <ellipse cx="54" cy="26" rx="5" ry="4.5" transform="rotate(10,54,26)"
+                             fill="#2C1500" stroke="#1A1A1A" stroke-width="2" />
+                    <path d="M 51 24 Q 54 22 57 25" fill="none" stroke="#5C3317" stroke-width="1.5" stroke-linecap="round" />
+
+                    <!-- Chip 3 (right side) -->
+                    <ellipse cx="70" cy="44" rx="5.5" ry="4.5" transform="rotate(30,70,44)"
+                             fill="#2C1500" stroke="#1A1A1A" stroke-width="2" />
+                    <path d="M 67 42 Q 70 39 73 42" fill="none" stroke="#5C3317" stroke-width="1.5" stroke-linecap="round" />
+
+                    <!-- Chip 4 (center) -->
+                    <ellipse cx="48" cy="52" rx="6.5" ry="5.5" transform="rotate(-10,48,52)"
+                             fill="#2C1500" stroke="#1A1A1A" stroke-width="2" />
+                    <path d="M 44 50 Q 48 47 52 50" fill="none" stroke="#5C3317" stroke-width="1.5" stroke-linecap="round" />
+
+                    <!-- Chip 5 (bottom-left) -->
+                    <ellipse cx="30" cy="62" rx="5" ry="4" transform="rotate(15,30,62)"
+                             fill="#2C1500" stroke="#1A1A1A" stroke-width="2" />
+                    <path d="M 27 60 Q 30 57 33 60" fill="none" stroke="#5C3317" stroke-width="1.5" stroke-linecap="round" />
+
+                    <!-- Chip 6 (bottom-right) -->
+                    <ellipse cx="62" cy="68" rx="5" ry="4.5" transform="rotate(-15,62,68)"
+                             fill="#2C1500" stroke="#1A1A1A" stroke-width="2" />
+                    <path d="M 59 66 Q 62 63 65 66" fill="none" stroke="#5C3317" stroke-width="1.5" stroke-linecap="round" />
+
+                    <!-- Chip 7 (small, top-right) -->
+                    <ellipse cx="66" cy="28" rx="4" ry="3.5" transform="rotate(5,66,28)"
+                             fill="#2C1500" stroke="#1A1A1A" stroke-width="2" />
+
+                    <!-- Bite mark (top-right, chunk missing) -->
+                    <path d="M 76 18 C 84 10, 95 10, 94 22 C 93 30, 86 32, 80 28 Z"
+                          fill="white" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round" />
+                    <!-- Bite jagged edge texture -->
+                    <polyline points="76,18 79,22 83,19 87,24 91,20"
+                              fill="none" stroke="#C8873A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+                    <!-- Crumbs near bite -->
+                    <ellipse cx="90" cy="28" rx="3" ry="2" transform="rotate(20,90,28)" fill="#D4A96A" stroke="#1A1A1A" stroke-width="1.5" />
+                    <ellipse cx="84" cy="10" rx="2" ry="1.5" transform="rotate(-10,84,10)" fill="#D4A96A" stroke="#1A1A1A" stroke-width="1.5" />
+                    <ellipse cx="94" cy="16" rx="2.5" ry="2" transform="rotate(30,94,16)" fill="#C8873A" stroke="#1A1A1A" stroke-width="1.5" />
+
+                    <!-- Surface gloss (top-left of cookie) -->
+                    <path d="M 26 22 Q 36 16 44 22" fill="none" stroke="rgba(255,255,255,0.40)" stroke-width="3" stroke-linecap="round" />
+                    <path d="M 22 32 Q 28 28 34 32" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2" stroke-linecap="round" />
+
+                </g>
+            </svg>`;
+        }
+        if (iconName === 'svg-choco-cookie') {
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.32));">
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-linejoin="round">
+
+                    <!-- COOKIE (bottom-left, slightly behind) -->
+                    <g transform="rotate(-10, 28, 68)">
+                        <!-- Base organic shape -->
+                        <path d="M 28 48 C 40 46, 51 54, 50 67 C 49 80, 39 90, 27 90 C 15 90, 5 80, 6 67 C 7 54, 16 46, 28 48 Z"
+                              fill="#C8873A" stroke="#1A1A1A" stroke-width="3"/>
+                        <!-- Inner baked ring -->
+                        <path d="M 28 53 C 38 52, 46 59, 45 68 C 44 77, 37 85, 28 85 C 19 85, 12 77, 12 68 C 12 59, 18 52, 28 53 Z"
+                              fill="none" stroke="#A0622A" stroke-width="1.5" stroke-dasharray="3 2.5"/>
+                        <!-- Chip 1 -->
+                        <ellipse cx="20" cy="61" rx="4.5" ry="4" transform="rotate(-15,20,61)" fill="#2C1500" stroke="#1A1A1A" stroke-width="1.8"/>
+                        <path d="M 17 59 Q 20 56 23 59" fill="none" stroke="#5C3317" stroke-width="1.2" stroke-linecap="round"/>
+                        <!-- Chip 2 -->
+                        <ellipse cx="36" cy="60" rx="4" ry="3.5" transform="rotate(10,36,60)" fill="#2C1500" stroke="#1A1A1A" stroke-width="1.8"/>
+                        <path d="M 33 58 Q 36 55 39 58" fill="none" stroke="#5C3317" stroke-width="1.2" stroke-linecap="round"/>
+                        <!-- Chip 3 -->
+                        <ellipse cx="22" cy="74" rx="4" ry="3.5" transform="rotate(5,22,74)" fill="#2C1500" stroke="#1A1A1A" stroke-width="1.8"/>
+                        <path d="M 19 72 Q 22 69 25 72" fill="none" stroke="#5C3317" stroke-width="1.2" stroke-linecap="round"/>
+                        <!-- Chip 4 -->
+                        <ellipse cx="37" cy="76" rx="3.5" ry="3" transform="rotate(-10,37,76)" fill="#2C1500" stroke="#1A1A1A" stroke-width="1.8"/>
+                        <!-- Bite mark -->
+                        <path d="M 44 54 C 51 45, 61 48, 59 58 C 57 64, 49 65, 45 60 Z"
+                              fill="white" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/>
+                        <polyline points="44,54 47,58 51,54 55,59 58,55"
+                                  fill="none" stroke="#C8873A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <!-- Crumbs -->
+                        <ellipse cx="58" cy="49" rx="2" ry="1.5" transform="rotate(20,58,49)" fill="#D4A96A" stroke="#1A1A1A" stroke-width="1"/>
+                        <ellipse cx="63" cy="56" rx="1.5" ry="1.2" fill="#D4A96A" stroke="#1A1A1A" stroke-width="1"/>
+                        <!-- Gloss -->
+                        <path d="M 10 59 Q 18 53 24 57" fill="none" stroke="rgba(255,255,255,0.40)" stroke-width="2.5" stroke-linecap="round"/>
+                    </g>
+
+                    <!-- CHOCOLATE BAR (top-right, in front) -->
+                    <g transform="rotate(8, 67, 30)">
+                        <!-- Wrapper foil strip -->
+                        <rect x="43" y="10" width="48" height="7" rx="3" fill="#D4A96A" stroke="#1A1A1A" stroke-width="2.5"/>
+                        <!-- Bar body -->
+                        <rect x="43" y="16" width="48" height="30" rx="3" fill="#7B4A2D" stroke="#1A1A1A" stroke-width="3"/>
+                        <!-- H-groove -->
+                        <line x1="44" y1="28" x2="90" y2="28" stroke="#5C3317" stroke-width="2.5"/>
+                        <!-- V-grooves -->
+                        <line x1="63" y1="17" x2="63" y2="45" stroke="#5C3317" stroke-width="2.5"/>
+                        <line x1="76" y1="17" x2="76" y2="45" stroke="#5C3317" stroke-width="2.5"/>
+                        <!-- Shine -->
+                        <path d="M 47 18 Q 57 15 63 20" fill="none" stroke="rgba(255,255,255,0.50)" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M 46 24 Q 53 21 59 24" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.5" stroke-linecap="round"/>
+                    </g>
+
+                    <!-- Broken piece (top-right, outside bar group) -->
+                    <g transform="rotate(20, 95, 10)">
+                        <rect x="87" y="5" width="16" height="4" rx="1.5" fill="#D4A96A" stroke="#1A1A1A" stroke-width="1.8"/>
+                        <rect x="87" y="8" width="16" height="9" rx="2" fill="#A0623A" stroke="#1A1A1A" stroke-width="2"/>
+                        <line x1="95" y1="9" x2="95" y2="16" stroke="#7B4A2D" stroke-width="1.5"/>
+                        <path d="M 89 9 Q 92 7 95 10" fill="none" stroke="rgba(255,255,255,0.40)" stroke-width="1.5" stroke-linecap="round"/>
+                    </g>
+                    <!-- Break snap line -->
+                    <polyline points="89,17 92,11 95,14 98,8"
+                              fill="none" stroke="#1A1A1A" stroke-width="2.5"
+                              stroke-linecap="round" stroke-linejoin="round"
+                              transform="rotate(8, 67, 30)"/>
+
+                </g>
+            </svg>`;
+        }
         const cls = getIconClass(iconName || 'fa-gift');
         return `<i class="${cls}" style="color: ${color || '#006837'};"></i>`;
     };
@@ -2031,21 +2241,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Decrement prize stock if prizeId is provided
                 if (prizeId) {
-                    // 1. Update localStorage and cache immediately (optimistic UI)
-                    const prizes = JSON.parse(localStorage.getItem('moura_leite_prizes')) || [];
-                    const pIdx = prizes.findIndex(p => p.id === prizeId);
-                    if (pIdx !== -1) {
-                        const currentQty = (prizes[pIdx].quantity === undefined || prizes[pIdx].quantity === null) ? -1 : parseInt(prizes[pIdx].quantity);
+                    // 1. Use getPrizeData() as single source of truth (returns sharedPrizeCache if Firestore is available,
+                    //    otherwise falls back to localStorage). This prevents the bug where a prize added via the admin
+                    //    panel is in Firestore/sharedPrizeCache but NOT in localStorage, causing pIdx === -1 and silently
+                    //    skipping the stock decrement.
+                    const allPrizes = getPrizeData();
+                    const prize = allPrizes.find(p => p.id === prizeId);
+                    if (prize) {
+                        const currentQty = (prize.quantity === undefined || prize.quantity === null) ? -1 : parseInt(prize.quantity);
                         if (currentQty > 0) {
                             const newQty = currentQty - 1;
-                            prizes[pIdx].quantity = newQty;
-                            try { localStorage.setItem('moura_leite_prizes', JSON.stringify(prizes)); } catch(e) {}
 
-                            // Update in-memory cache so onSnapshot doesn't revert
+                            // Update in-memory sharedPrizeCache immediately (optimistic UI)
                             const cIdx = sharedPrizeCache.findIndex(p => p.id === prizeId);
                             if (cIdx !== -1) sharedPrizeCache[cIdx].quantity = newQty;
 
-                            // 2. Firestore: use runTransaction for atomic decrement (prevents race with onSnapshot)
+                            // Also update localStorage to keep it in sync
+                            try {
+                                const localPrizes = JSON.parse(localStorage.getItem('moura_leite_prizes')) || [];
+                                const lIdx = localPrizes.findIndex(p => p.id === prizeId);
+                                if (lIdx !== -1) {
+                                    localPrizes[lIdx].quantity = newQty;
+                                } else {
+                                    // Prize was not in localStorage yet — add it from cache
+                                    const cacheCopy = { ...prize, quantity: newQty };
+                                    localPrizes.push(cacheCopy);
+                                }
+                                localStorage.setItem('moura_leite_prizes', JSON.stringify(localPrizes));
+                            } catch(e) { console.warn('Não foi possível atualizar localStorage de prêmios:', e); }
+
+                            // 2. Firestore: use runTransaction for atomic decrement (prevents race conditions)
                             if (dbAvailable && prizesCollection) {
                                 const prizeDocRef = prizesCollection.doc(prizeId);
                                 db.runTransaction(async (transaction) => {
@@ -2057,6 +2282,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
                                 }).catch(e => console.warn('Erro na transação de estoque:', e));
                             }
+                        }
+                    } else {
+                        // Prize not found in any source — still attempt atomic Firestore decrement as fallback
+                        console.warn(`[buyItem] Prêmio '${prizeId}' não encontrado no cache local. Tentando decrementar via Firestore diretamente.`);
+                        if (dbAvailable && prizesCollection) {
+                            const prizeDocRef = prizesCollection.doc(prizeId);
+                            db.runTransaction(async (transaction) => {
+                                const snap = await transaction.get(prizeDocRef);
+                                if (!snap.exists) return;
+                                const serverQty = (snap.data().quantity === undefined || snap.data().quantity === null) ? -1 : parseInt(snap.data().quantity);
+                                if (serverQty > 0) {
+                                    transaction.update(prizeDocRef, { quantity: serverQty - 1 });
+                                }
+                            }).catch(e => console.warn('Erro na transação de estoque (fallback):', e));
                         }
                     }
                     renderCustomPrizes();
