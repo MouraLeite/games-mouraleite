@@ -934,7 +934,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const multiplier = getCurrentMultiplier();
         questsGrid.insertAdjacentHTML('beforeend', missions
-            .filter(m => m.active)
+            .filter(m => {
+                if (!m.active) return false;
+                if (m.frequency === 'once' && storedUser['lastCustomOnce_' + m.id] === 'completed') {
+                    return false;
+                }
+                return true;
+            })
             .map(mission => {
                 const badgeLabel = mission.frequency === 'daily' ? 'Diário' : mission.frequency === 'weekly' ? 'Semanal' : mission.frequency === 'monthly' ? 'Mensal' : 'Única';
                 const showFrequencyBadge = !mission.surprise;
@@ -1020,7 +1026,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const dashboardList = document.getElementById('dashboard-missions-list');
         if (dashboardList) {
             dashboardList.innerHTML = '';
-            const topMissions = missions.filter(m => m.active && !m.surprise).slice(0, 4);
+            const topMissions = missions.filter(m => {
+                if (!m.active || m.surprise) return false;
+                if (m.frequency === 'once' && storedUser['lastCustomOnce_' + m.id] === 'completed') {
+                    return false;
+                }
+                return true;
+            }).slice(0, 4);
             dashboardList.insertAdjacentHTML('beforeend', topMissions.map(mission => {
                 const iconClass = getIconClass(mission.icon);
                 const pointValue = Math.floor((mission.points || 0) * multiplier);
