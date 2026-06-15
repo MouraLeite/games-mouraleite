@@ -936,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
         questsGrid.insertAdjacentHTML('beforeend', missions
             .filter(m => m.active)
             .map(mission => {
-                const badgeLabel = mission.frequency === 'daily' ? 'Diário' : mission.frequency === 'weekly' ? 'Semanal' : 'Mensal';
+                const badgeLabel = mission.frequency === 'daily' ? 'Diário' : mission.frequency === 'weekly' ? 'Semanal' : mission.frequency === 'monthly' ? 'Mensal' : 'Única';
                 const showFrequencyBadge = !mission.surprise;
                 const surpriseBadge = mission.surprise ? `<div class="quest-surprise-badge"><span class="fire-emoji">🔥</span><span>Surpresa</span></div>` : '';
                 const pointValue = Math.floor((mission.points || 0) * multiplier);
@@ -955,10 +955,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Check if mission was already completed this period
                 const lastKey = mission.frequency === 'daily' ? 'lastCustomDaily_' + mission.id
                               : mission.frequency === 'weekly' ? 'lastCustomWeekly_' + mission.id
-                              : 'lastCustomMonthly_' + mission.id;
+                              : mission.frequency === 'monthly' ? 'lastCustomMonthly_' + mission.id
+                              : 'lastCustomOnce_' + mission.id;
                 const dateKey = mission.frequency === 'daily' ? todayStr
                              : mission.frequency === 'weekly' ? currentWeek
-                             : currentMonth;
+                             : mission.frequency === 'monthly' ? currentMonth
+                             : 'completed';
                 
                 const isCompleted = storedUser[lastKey] === dateKey || 
                                     (mission.id === 'sys_checkin' && storedUser.lastCheckIn === todayStr) ||
@@ -1025,10 +1027,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const lastKey = mission.frequency === 'daily' ? 'lastCustomDaily_' + mission.id
                               : mission.frequency === 'weekly' ? 'lastCustomWeekly_' + mission.id
-                              : 'lastCustomMonthly_' + mission.id;
+                              : mission.frequency === 'monthly' ? 'lastCustomMonthly_' + mission.id
+                              : 'lastCustomOnce_' + mission.id;
                 const dateKey = mission.frequency === 'daily' ? todayStr
                              : mission.frequency === 'weekly' ? currentWeek
-                             : currentMonth;
+                             : mission.frequency === 'monthly' ? currentMonth
+                             : 'completed';
                 const isCompleted = storedUser[lastKey] === dateKey || 
                                     (mission.id === 'sys_checkin' && storedUser.lastCheckIn === todayStr) ||
                                     (mission.id === 'sys_lunch' && storedUser.lastLunchWeek === currentWeek) ||
@@ -1070,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         body.innerHTML = missions.map(mission => {
-            const freqLabel = mission.frequency === 'daily' ? 'Diária' : mission.frequency === 'weekly' ? 'Semanal' : 'Mensal';
+            const freqLabel = mission.frequency === 'daily' ? 'Diária' : mission.frequency === 'weekly' ? 'Semanal' : mission.frequency === 'monthly' ? 'Mensal' : 'Única';
             const statusLabel = mission.active ? 'Ativa' : 'Inativa';
             return `
                 <tr>
@@ -2529,7 +2533,7 @@ document.addEventListener('DOMContentLoaded', () => {
             frequencyKeyMap[missionId].forEach(key => { fieldsToClear[key] = null; });
         } else {
             // For custom missions, try all frequency variants
-            ['lastCustomDaily_', 'lastCustomWeekly_', 'lastCustomMonthly_'].forEach(prefix => {
+            ['lastCustomDaily_', 'lastCustomWeekly_', 'lastCustomMonthly_', 'lastCustomOnce_'].forEach(prefix => {
                 fieldsToClear[prefix + missionId] = null;
             });
         }
@@ -3156,11 +3160,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Get the last completion key based on frequency
             const lastKey = frequency === 'daily' ? 'lastCustomDaily_' + missionId
                           : frequency === 'weekly' ? 'lastCustomWeekly_' + missionId
-                          : 'lastCustomMonthly_' + missionId;
+                          : frequency === 'monthly' ? 'lastCustomMonthly_' + missionId
+                          : 'lastCustomOnce_' + missionId;
             
             const dateKey = frequency === 'daily' ? todayStr
                          : frequency === 'weekly' ? currentWeek
-                         : currentMonth;
+                         : frequency === 'monthly' ? currentMonth
+                         : 'completed';
 
             const isCompleted = storedUser[lastKey] === dateKey || 
                                 (missionId === 'sys_checkin' && storedUser.lastCheckIn === todayStr) ||
