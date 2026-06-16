@@ -394,7 +394,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${tx.time || '—'}</td>
                     <td>${(tx.item || '—').replace(/pts|Moura Coins/gi, 'ML Coins')}</td>
                     <td style="text-align:center;">${ptsDisplay}</td>
-                    <td><span class="status-badge" style="background:${sColor}20;color:${sColor};border:1px solid ${sColor}40;">${tx.status || '—'}</span></td>
+                    <td>
+                        <span class="status-badge" style="background:${sColor}20;color:${sColor};border:1px solid ${sColor}40;">${tx.status || '—'}</span>
+                        ${tx.rejectReason ? `<div style="font-size: 11px; color: #f44336; margin-top: 4px; line-height: 1.2;">Motivo: ${tx.rejectReason}</div>` : ''}
+                    </td>
                 </tr>`;
             }).join('');
 
@@ -2450,7 +2453,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initBoostUI();
 
     window.rejectTransaction = async (email, originalIndex) => {
-        if (!confirm('Deseja realmente recusar este crédito e remover os ML Coins do usuário?')) return;
+        const reason = prompt('Deseja realmente recusar este crédito e remover os ML Coins do usuário?\n\nDigite o motivo da recusa (obrigatório):');
+        if (reason === null) return;
+        if (!reason.trim()) {
+            alert('O motivo da recusa é obrigatório.');
+            return;
+        }
         
         try {
             const userDoc = await db.collection("users").doc(email).get();
@@ -2497,6 +2505,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Update transaction status
             history[originalIndex].status = 'Recusado';
+            history[originalIndex].rejectReason = reason.trim();
             
             // CLEANUP: Remove base64 images from history before saving to avoid 1MB limit errors
             const cleanedHistory = history.map(tx => {
@@ -2507,13 +2516,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 return cleanedTx;
             });
             
-            // Update points
+            // Update points and specific mission counts if applicable
             const newPoints = Math.max(0, (parseInt(userData.points) || 0) - pointsToDeduct);
-            
-            await db.collection("users").doc(email).update({
+            let updates = {
                 history: cleanedHistory,
                 points: newPoints
-            });
+            };
+
+            // Revert achievement counters if the rejected transaction was a specific system mission
+            if (tx.item.includes('Integração entre Times') || tx.item.includes('Almoço Moura Leite')) {
+                updates.lunchCount = Math.max(0, (userData.lunchCount || 0) - 1);
+            }
+            if (tx.item.includes('Reunião de Integração')) {
+                updates.reuniaoCount = Math.max(0, (userData.reuniaoCount || 0) - 1);
+            }
+            if (tx.item.includes('Embaixador Digital')) {
+                updates.linkedInCount = Math.max(0, (userData.linkedInCount || 0) - 1);
+            }
+            if (tx.item.includes('Engajamento Viva Engage')) {
+                updates.vivaEngageCount = Math.max(0, (userData.vivaEngageCount || 0) - 1);
+            }
+            if (tx.item.includes('Dinâmica de Jogos')) {
+                updates.gamesCount = Math.max(0, (userData.gamesCount || 0) - 1);
+            }
+
+            await db.collection("users").doc(email).update(updates);
             
             alert(`Transação recusada e ${pointsToDeduct} ML Coins removidos com sucesso!`);
             
@@ -2727,7 +2754,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ` : ''}
                 <td>${tx.date}</td>
                 <td>${tx.time}</td>
-                <td><span class="status-badge">${tx.status}</span></td>
+                <td>
+                    <span class="status-badge">${tx.status}</span>
+                    ${tx.rejectReason ? `<div style="font-size: 11px; color: #ff5252; margin-top: 4px; line-height: 1.2;">Motivo: ${tx.rejectReason}</div>` : ''}
+                </td>
                 ${isAdmin ? `
                     <td style="text-align:center;">
                         ${(tx.status === 'Concluído' || tx.status === 'Validando') ? 

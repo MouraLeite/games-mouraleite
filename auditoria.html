@@ -294,9 +294,9 @@
                         if (tx.status === 'Recusado' || tx.status === 'Cancelado') {
                             if (pts !== null && pts > 0) {
                                 // Explicitly show that it was subtracted/negated
-                                details.push(`<div style="color:#f44336;">${tx.date || '??'} | ${displayItem} → -${pts} ML Coins (RECUSADO)</div>`);
+                                details.push(`<div style="color:#f44336;">${tx.date || '??'} | ${displayItem} → -${pts} ML Coins (RECUSADO)${tx.rejectReason ? ` [Motivo: ${tx.rejectReason}]` : ''}</div>`);
                             } else {
-                                details.push(`<div style="color:#f44336; text-decoration: line-through;">${tx.date || '??'} | ${displayItem} (${tx.status.toUpperCase()})</div>`);
+                                details.push(`<div style="color:#f44336; text-decoration: line-through;">${tx.date || '??'} | ${displayItem} (${tx.status.toUpperCase()})${tx.rejectReason ? ` [Motivo: ${tx.rejectReason}]` : ''}</div>`);
                             }
                             return; // Don't add to calculatedPoints
                         }
