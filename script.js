@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // CRITICAL FIX: Sync all completion flags and history so local state matches server
                     Object.keys(currentUserInDb).forEach(key => {
-                        if (key.startsWith('last') || key === 'history' || key.endsWith('Count')) {
+                        if (key.startsWith('last') || key === 'history' || key.endsWith('Count') || key === 'streak') {
                             // Only update if stringified values differ to avoid deep comparison complexity
                             if (JSON.stringify(storedUser[key]) !== JSON.stringify(currentUserInDb[key])) {
                                 storedUser[key] = currentUserInDb[key];
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // (e.g., by adminResetMission), remove it from localStorage too.
                     // Without this, the mission keeps showing as "Concluído" even after admin reset.
                     Object.keys(storedUser).forEach(key => {
-                        if ((key.startsWith('last') || key.startsWith('lastCustom')) && !(key in currentUserInDb)) {
+                        if ((key.startsWith('last') || key.startsWith('lastCustom')) && key !== 'lastVisit' && !(key in currentUserInDb)) {
                             delete storedUser[key];
                             needsUpdate = true;
                         }
@@ -1803,6 +1803,15 @@ document.addEventListener('DOMContentLoaded', () => {
         storedUser.visitCount = (storedUser.visitCount || 0) + 1;
         storedUser.lastVisit = today;
         localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        
+        // Sincroniza direto no Firestore para evitar que o onSnapshot delete a chave "lastVisit"
+        if (dbAvailable && storedUser.email) {
+            db.collection('users').doc(storedUser.email).update({
+                streak: storedUser.streak,
+                visitCount: storedUser.visitCount,
+                lastVisit: storedUser.lastVisit
+            }).catch(e => console.warn('Erro ao salvar visita no db:', e));
+        }
     }
 
     // Rank Definitions — Níveis baseados em UTILIZAÇÃO de pontos (gastos na loja/boost)
@@ -1976,7 +1985,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Achievement Management
     const updateAchievements = () => {
         const achCards = document.querySelectorAll('.achievement-card');
-        const visits = storedUser.visitCount || 1;
+        const visits = storedUser.streak || storedUser.visitCount || 1;
         
         // Frequency (10 dias totais)
         if (visits >= 10) unlockAch(achCards[1]);
