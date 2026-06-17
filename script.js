@@ -1137,6 +1137,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const index = missions.findIndex(m => m.id === editingId);
                 if (index !== -1) {
                     const safeDuration = isNaN(durationHours) ? 0 : durationHours;
+                    const oldDuration = missions[index].durationHours || 0;
+                    const currentExpires = missions[index].expiresAt ? new Date(missions[index].expiresAt).getTime() : 0;
+                    const isExpired = currentExpires && currentExpires <= Date.now();
+                    
+                    let newExpiresAt = missions[index].expiresAt;
+                    if (surprise && safeDuration > 0) {
+                        // Se a missão está expirada OU se o administrador alterou o valor da duração, renova o tempo!
+                        if (!newExpiresAt || isExpired || safeDuration !== oldDuration) {
+                            newExpiresAt = new Date(Date.now() + safeDuration * 3600000).toISOString();
+                        }
+                    } else {
+                        newExpiresAt = null;
+                    }
+
                     const updatedMission = {
                         ...missions[index],
                         name,
@@ -1149,7 +1163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         active,
                         surprise,
                         durationHours: surprise ? safeDuration : null,
-                        expiresAt: (surprise && safeDuration > 0) ? (missions[index].expiresAt || new Date(Date.now() + safeDuration * 3600000).toISOString()) : null,
+                        expiresAt: newExpiresAt,
                         updatedAt: new Date().toISOString()
                     };
                     
