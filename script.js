@@ -3601,6 +3601,129 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePointsDisplay();
     updateRanking();
     updateUIWithUser();
+    const openPraiseModal = (missionId, missionName, missionPoints, lastKey, dateKey) => {
+        const modal = document.getElementById('praise-modal');
+        if (!modal) return;
+        
+        document.getElementById('praise-mission-id').value = missionId;
+        document.getElementById('praise-mission-name').value = missionName;
+        document.getElementById('praise-mission-points').value = missionPoints;
+        document.getElementById('praise-last-key').value = lastKey;
+        document.getElementById('praise-date-key').value = dateKey;
+        
+        const userSelect = document.getElementById('praise-user-select');
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        
+        const sortedUsers = allUsers
+            .filter(u => u.email !== 'admin@mouraleite.com.br' && u.email !== storedUser.email && !u.disabled)
+            .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+            
+        userSelect.innerHTML = '<option value="" disabled selected>Selecione o colega...</option>';
+        sortedUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.email;
+            opt.textContent = `${u.username || 'Sem Nome'} (${u.email})`;
+            opt.dataset.username = u.username;
+            userSelect.appendChild(opt);
+        });
+        
+        document.getElementById('praise-link-input').value = '';
+        modal.classList.remove('hidden');
+    };
+    
+    const praiseForm = document.getElementById('praise-form');
+    if (praiseForm) {
+        praiseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const missionId = document.getElementById('praise-mission-id').value;
+            const missionName = document.getElementById('praise-mission-name').value;
+            const missionPoints = parseInt(document.getElementById('praise-mission-points').value);
+            const lastKey = document.getElementById('praise-last-key').value;
+            const dateKey = document.getElementById('praise-date-key').value;
+            const userSelect = document.getElementById('praise-user-select');
+            const praisedEmail = userSelect.value;
+            const praisedName = userSelect.options[userSelect.selectedIndex]?.dataset.username || praisedEmail;
+            const link = document.getElementById('praise-link-input').value;
+            
+            if (!praisedEmail || !link) return alert("Preencha todos os campos.");
+            
+            completeMissionWithPraise(missionId, missionName, missionPoints, praisedEmail, praisedName, link, lastKey, dateKey);
+            document.getElementById('praise-modal').classList.add('hidden');
+        });
+    }
+    
+    const closePraiseModalBtn = document.getElementById('close-praise-modal');
+    if (closePraiseModalBtn) closePraiseModalBtn.addEventListener('click', () => document.getElementById('praise-modal').classList.add('hidden'));
+
+    const completeMissionWithPraise = async (missionId, missionName, missionPoints, praisedEmail, praisedName, link, lastKey, dateKey) => {
+        const serverTimestamp = getServerTime();
+        
+        // Quem envia não ganha os pontos, mas registra no histórico
+        storedUser[lastKey] = dateKey;
+        storedUser.lastMissionTime = serverTimestamp;
+        
+        const transaction = {
+            user: storedUser.username,
+            item: `Elogio enviado para: ${praisedName} (Missão: ${missionName}) (+0 ML Coins)`,
+            date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
+            time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            status: 'Concluído',
+            link: link,
+            praisedUser: praisedEmail,
+            serverTime: serverTimestamp
+        };
+        
+        if (!storedUser.history) storedUser.history = [];
+        storedUser.history.unshift(transaction);
+        
+        try {
+            const globalHistory = JSON.parse(localStorage.getItem('moura_leite_global_history')) || [];
+            globalHistory.unshift(transaction);
+            if (globalHistory.length > 200) globalHistory.length = 200;
+            localStorage.setItem('moura_leite_global_history', JSON.stringify(globalHistory));
+            localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        } catch(e) {}
+        
+        saveAndSync();
+        logMissionAttempt(storedUser.email, missionId, missionName, true, serverTimestamp);
+        
+        // Dá os pontos para quem recebeu o elogio diretamente no Firebase
+        if (dbAvailable) {
+            try {
+                const praisedRef = db.collection('users').doc(praisedEmail);
+                const praisedDoc = await praisedRef.get();
+                if (praisedDoc.exists) {
+                    const data = praisedDoc.data();
+                    const newPoints = (data.points || 0) + missionPoints;
+                    
+                    const praiseTransaction = {
+                        user: data.username || praisedEmail,
+                        item: `Elogio recebido de: ${storedUser.username} (Missão: ${missionName}) (+${missionPoints} ML Coins)`,
+                        date: new Date(serverTimestamp).toLocaleDateString('pt-BR'),
+                        time: new Date(serverTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                        status: 'Concluído',
+                        link: link,
+                        fromUser: storedUser.email,
+                        serverTime: serverTimestamp
+                    };
+                    
+                    const newHistory = [praiseTransaction, ...(data.history || [])];
+                    await praisedRef.update({
+                        points: newPoints,
+                        history: newHistory
+                    });
+                }
+            } catch(e) {
+                console.error("Erro ao dar pontos ao elogiado:", e);
+            }
+        }
+        
+        updateUIWithUser();
+        renderCustomMissions();
+        triggerCelebration();
+        alert(`Elogio enviado com sucesso! ${praisedName} recebeu ${missionPoints} ML Coins!`);
+    };
+
     startCountdown();
     
     // Custom Missions & Prizes Initialization
