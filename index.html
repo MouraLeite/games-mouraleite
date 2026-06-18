@@ -483,6 +483,7 @@
                                         <option value="button">Botão Simples</option>
                                         <option value="photo">Foto</option>
                                         <option value="link">Link</option>
+                                        <option value="praise">Elogio (Viva Engage)</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -699,6 +700,36 @@
             </div>
         </div>
     </div>
+    <!-- Praise Mission Modal -->
+    <div id="praise-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-modal" id="close-praise-modal">&times;</span>
+            <div class="section-title">
+                <h2>Enviar Elogio</h2>
+                <p>Reconheça o trabalho de um colega e dê os pontos a ele!</p>
+            </div>
+            <form id="praise-form" class="mission-form">
+                <input type="hidden" id="praise-mission-id">
+                <input type="hidden" id="praise-mission-name">
+                <input type="hidden" id="praise-mission-points">
+                <input type="hidden" id="praise-last-key">
+                <input type="hidden" id="praise-date-key">
+                <div class="form-group">
+                    <label for="praise-user-select">Quem você quer elogiar?</label>
+                    <!-- Usando select padrão. Podemos popular dinamicamente no JS -->
+                    <select id="praise-user-select" required>
+                        <option value="" disabled selected>Carregando colaboradores...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="praise-link-input">Link da publicação no Viva Engage</label>
+                    <input type="url" id="praise-link-input" placeholder="https://engage.cloud.microsoft/..." required>
+                </div>
+                <button type="submit" class="btn-auth">Enviar Elogio e Pontos</button>
+            </form>
+        </div>
+    </div>
+
     <!-- User Edit Modal -->
     <div id="edit-user-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 500px;">

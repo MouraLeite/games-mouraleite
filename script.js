@@ -981,7 +981,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 let buttonText = isCompleted ? 'Concluído' : 
                     (mission.validationType === 'photo' ? 'Enviar Foto' : 
-                     mission.validationType === 'link' ? 'Enviar Link' : 'Validar');
+                     mission.validationType === 'link' ? 'Enviar Link' : 
+                     mission.validationType === 'praise' ? 'Elogiar' : 'Validar');
                 
                 if (isExpired && !isCompleted) buttonText = 'Expirada';
                 
@@ -3273,6 +3274,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (link && link.trim()) {
                     completeMissionWithLink(missionId, missionName, missionPoints, link, lastKey, dateKey);
                 }
+            } else if (validationType === 'praise') {
+                openPraiseModal(missionId, missionName, missionPoints, lastKey, dateKey);
             } else {
                 completeMissionSimple(missionId, missionName, missionPoints, lastKey, dateKey);
             }
