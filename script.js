@@ -3643,9 +3643,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const userSelect = document.getElementById('praise-user-select');
             const praisedEmail = userSelect.value;
             const praisedName = userSelect.options[userSelect.selectedIndex]?.dataset.username || praisedEmail;
-            const link = document.getElementById('praise-link-input').value;
+            const link = document.getElementById('praise-link-input').value.trim();
             
-            if (!praisedEmail || !link) return alert("Preencha todos os campos.");
+            if (!praisedEmail || !link) {
+                alert("Preencha todos os campos.");
+                return;
+            }
+
+            if (!link.toLowerCase().includes('engage') && !link.toLowerCase().includes('yammer')) {
+                alert("Por favor, insira um link válido do Viva Engage.");
+                return;
+            }
             
             completeMissionWithPraise(missionId, missionName, missionPoints, praisedEmail, praisedName, link, lastKey, dateKey);
             document.getElementById('praise-modal').classList.add('hidden');
