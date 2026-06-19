@@ -789,6 +789,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 </g>
             </svg>`;
         }
+        if (iconName === 'svg-snacks-combo') {
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.32));">
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Energy Can (back left) -->
+                    <g transform="translate(5, 5) scale(0.7) rotate(-15, 50, 50)">
+                        <path d="M 36 15 L 36 85 C 36 90, 64 90, 64 85 L 64 15 Z" fill="#1D3557" stroke="#1A1A1A" stroke-width="3"/>
+                        <ellipse cx="50" cy="15" rx="14" ry="5" fill="#C0C0C0" stroke="#1A1A1A" stroke-width="3"/>
+                        <path d="M 36 85 C 36 90, 64 90, 64 85" fill="none" stroke="#1A1A1A" stroke-width="3"/>
+                        <ellipse cx="50" cy="14" rx="3.5" ry="1.5" fill="#808080" stroke="#1A1A1A" stroke-width="1.5"/>
+                        <circle cx="50" cy="15.5" r="1" fill="#1A1A1A"/>
+                        <path d="M 36 75 L 64 75 C 64 90, 36 90, 36 75 Z" fill="#C0C0C0" stroke="#1A1A1A" stroke-width="2.5"/>
+                        <polygon points="54,30 44,50 50,50 46,70 58,45 51,45" fill="#F4A261" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="miter"/>
+                        <path d="M 42 25 L 42 70" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+                    
+                    <!-- Soda Can (back right) -->
+                    <g transform="translate(35, 15) scale(0.6) rotate(15, 50, 50)">
+                        <path d="M 34 20 L 32 80 C 32 86, 68 86, 68 80 L 66 20 Z" fill="#E63946" stroke="#1A1A1A" stroke-width="3"/>
+                        <ellipse cx="50" cy="20" rx="16" ry="6" fill="#D3D3D3" stroke="#1A1A1A" stroke-width="3"/>
+                        <path d="M 32 80 C 32 86, 68 86, 68 80" fill="none" stroke="#1A1A1A" stroke-width="3"/>
+                        <ellipse cx="50" cy="19" rx="4" ry="2" fill="#808080" stroke="#1A1A1A" stroke-width="1.5"/>
+                        <circle cx="50" cy="21" r="1.5" fill="#1A1A1A"/>
+                        <path d="M 33 45 Q 50 30 67 45" fill="none" stroke="#F1FAEE" stroke-width="4"/>
+                        <path d="M 32.5 55 Q 50 40 67.5 55" fill="none" stroke="#F1FAEE" stroke-width="2"/>
+                        <path d="M 38 30 L 36 70" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
+                    </g>
+                    
+                    <!-- Chips Bag (front center) -->
+                    <g transform="translate(10, 25) scale(0.8) rotate(5, 50, 50)">
+                        <path d="M 25 20 L 75 20 L 82 85 L 18 85 Z" fill="#F4A261" stroke="#1A1A1A" stroke-width="3"/>
+                        <polyline points="25,20 30,12 35,20 40,12 45,20 50,12 55,20 60,12 65,20 70,12 75,20" fill="#F4A261" stroke="#1A1A1A" stroke-width="2.5"/>
+                        <line x1="25" y1="20" x2="75" y2="20" stroke="#1A1A1A" stroke-width="3"/>
+                        <polyline points="18,85 24,93 30,85 36,93 42,85 48,93 54,85 60,93 66,85 72,93 78,85 82,85" fill="#F4A261" stroke="#1A1A1A" stroke-width="2.5"/>
+                        <line x1="18" y1="85" x2="82" y2="85" stroke="#1A1A1A" stroke-width="3"/>
+                        
+                        <ellipse cx="50" cy="50" rx="18" ry="12" fill="#F1FAEE" stroke="#1A1A1A" stroke-width="2.5"/>
+                        <polygon points="50,42 42,55 58,55" fill="#E63946" stroke="#1A1A1A" stroke-width="1.5"/>
+                        <path d="M 30 35 Q 26 50 30 65" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+                </g>
+            </svg>`;
+        }
         const cls = getIconClass(iconName || 'fa-gift');
         return `<i class="${cls}" style="color: ${color || '#006837'};"></i>`;
     };
