@@ -1449,15 +1449,40 @@ document.addEventListener('DOMContentLoaded', () => {
             const qty = (prize.quantity === undefined || prize.quantity === null) ? -1 : parseInt(prize.quantity);
             const isSoldOut = qty === 0;
             const isUnlimited = qty === -1;
+
+            const cooldownDays = prize.cooldownDays || 0;
+            let isOnCooldown = false;
+            let cooldownRemainingStr = '';
+            
+            if (cooldownDays > 0) {
+                const lastBought = storedUser['lastBoughtPrize_' + prize.id];
+                if (lastBought) {
+                    // Try to use a valid now timestamp. Assuming getServerTime returns valid ms.
+                    const now = typeof getServerTime === 'function' ? getServerTime() : Date.now();
+                    const diffMs = now - lastBought;
+                    const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
+                    if (diffMs < cooldownMs) {
+                        isOnCooldown = true;
+                        const remainingMs = cooldownMs - diffMs;
+                        const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+                        cooldownRemainingStr = `${remainingDays} dia(s)`;
+                    }
+                }
+            }
             
             let stockBadgeHTML = '';
-            if (isSoldOut) {
+            if (isOnCooldown) {
+                stockBadgeHTML = `<div class="stock-badge stock-badge--low" style="background: #ff980020; color: #f57c00; border-color: #ff980040;"><i class="fa-solid fa-clock"></i> Libera em ${cooldownRemainingStr}</div>`;
+            } else if (isSoldOut) {
                 stockBadgeHTML = `<div class="stock-badge stock-badge--esgotado"><i class="fa-solid fa-ban"></i> Esgotado</div>`;
             } else if (!isUnlimited && qty <= 5) {
                 stockBadgeHTML = `<div class="stock-badge stock-badge--low"><i class="fa-solid fa-box-open"></i> Últimas ${qty} unidades</div>`;
             } else if (!isUnlimited) {
                 stockBadgeHTML = `<div class="stock-badge stock-badge--available"><i class="fa-solid fa-box"></i> ${qty} em estoque</div>`;
             }
+
+            const isButtonDisabled = isSoldOut || isOnCooldown;
+            const buttonText = isOnCooldown ? 'No Prazo' : (isSoldOut ? 'Esgotado' : 'Trocar');
 
             const html = `
                 <div class="store-card custom-prize-card${isSoldOut ? ' store-card--esgotado' : ''}">
@@ -1481,7 +1506,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <line x1="22" y1="82" x2="78" y2="82" stroke="#1B5E20" stroke-width="3" stroke-linecap="round" />
                             </svg>
                         </span>
-                        <button class="btn-buy" ${isSoldOut ? 'disabled' : ''} onclick="buyItem('${prize.name}', ${prize.points}, '${prize.id}')">${isSoldOut ? 'Esgotado' : 'Trocar'}</button>
+                        <button class="btn-buy" ${isButtonDisabled ? 'disabled' : ''} onclick="buyItem('${prize.name}', ${prize.points}, '${prize.id}')">${buttonText}</button>
                     </div>
                 </div>
             `;
@@ -1539,6 +1564,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const order = parseInt(document.getElementById('prize-order').value) || 0;
         const quantityRaw = document.getElementById('prize-quantity') ? parseInt(document.getElementById('prize-quantity').value) : -1;
         const quantity = isNaN(quantityRaw) ? -1 : quantityRaw;
+        const cooldownRaw = document.getElementById('prize-cooldown') ? parseInt(document.getElementById('prize-cooldown').value) : 0;
+        const cooldownDays = isNaN(cooldownRaw) ? 0 : cooldownRaw;
         const imageB64 = form.dataset.imageB64 || null;
 
         try {
@@ -1553,6 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 active,
                 order,
                 quantity,
+                cooldownDays,
                 updatedAt: new Date().toISOString()
             };
             if (imageB64) prizeObj.image = imageB64;
@@ -1668,6 +1696,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('prize-quantity')) {
             const qty = (prize.quantity === undefined || prize.quantity === null) ? -1 : prize.quantity;
             document.getElementById('prize-quantity').value = qty;
+        }
+        if (document.getElementById('prize-cooldown')) {
+            document.getElementById('prize-cooldown').value = prize.cooldownDays || 0;
         }
 
         const form = document.getElementById('prize-form');
@@ -2246,6 +2277,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Store Logic
     window.buyItem = function(itemName, price, prizeId) {
+        if (prizeId) {
+            const allPrizes = getPrizeData();
+            const prize = allPrizes.find(p => p.id === prizeId);
+            if (prize && prize.cooldownDays > 0) {
+                const lastBought = storedUser['lastBoughtPrize_' + prizeId];
+                if (lastBought) {
+                    const now = typeof getServerTime === 'function' ? getServerTime() : Date.now();
+                    const diffMs = now - lastBought;
+                    const cooldownMs = prize.cooldownDays * 24 * 60 * 60 * 1000;
+                    if (diffMs < cooldownMs) {
+                        alert('Este prêmio ainda está no período de espera (cooldown) e não pode ser resgatado agora.');
+                        return;
+                    }
+                }
+            }
+        }
+
         if (userPoints >= price) {
             const confirmPurchase = confirm(`Deseja trocar ${price} ML Coins por 1x ${itemName}?`);
             if (confirmPurchase) {
@@ -2282,8 +2330,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     } catch(e) {}
                 }
 
-                // Decrement prize stock if prizeId is provided
+                // Decrement prize stock and set cooldown if prizeId is provided
                 if (prizeId) {
+                    storedUser['lastBoughtPrize_' + prizeId] = getServerTime();
+
                     // 1. Use getPrizeData() as single source of truth (returns sharedPrizeCache if Firestore is available,
                     //    otherwise falls back to localStorage). This prevents the bug where a prize added via the admin
                     //    panel is in Firestore/sharedPrizeCache but NOT in localStorage, causing pIdx === -1 and silently
