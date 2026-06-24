@@ -859,7 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (iconSelect && iconPreview) {
             const updateIconPreview = () => {
                 const iconValue = iconSelect.value || 'fa-question';
-                iconPreview.innerHTML = `<i class="${getIconClass(iconValue)}"></i>`;
+                iconPreview.innerHTML = getIconHTML(iconValue, '#1976d2');
             };
             iconSelect.addEventListener('change', updateIconPreview);
             updateIconPreview();
@@ -913,7 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!previewBox) return;
                 const iconValue = iconSelect.value || 'fa-question';
                 const color = colorInput.value || '#1976d2';
-                previewBox.innerHTML = `<i class="${getIconClass(iconValue)}" style="color: ${color};"></i>`;
+                previewBox.innerHTML = getIconHTML(iconValue, color);
             };
             
             if (iconSelect) iconSelect.addEventListener('change', updatePreview);
@@ -1058,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${hotBadge}
                         ${surpriseBadge}
                         ${showFrequencyBadge ? `<div class="quest-badge ${mission.frequency}">${badgeLabel}</div>` : ''}
-                        <i class="${iconClass} quest-main-icon" style="color: ${iconColor};"></i>
+                        <div class="quest-main-icon" style="color: ${iconColor}; display: flex; justify-content: center; align-items: center;">${getIconHTML(mission.icon, iconColor)}</div>
                         <h3>${mission.name}</h3>
                         <p>${mission.description}</p>
                         <div class="quest-footer">
@@ -1121,8 +1121,8 @@ document.addEventListener('DOMContentLoaded', () => {
                      
                 return `
                     <div class="mission-item">
-                        <div class="mission-icon" style="background-color: ${mission.color || '#1976d2'}20; color: ${mission.color || '#1976d2'}">
-                            <i class="${iconClass}"></i>
+                        <div class="mission-icon" style="background-color: ${mission.color || '#1976d2'}20; color: ${mission.color || '#1976d2'}; font-size: 1.2em;">
+                            ${getIconHTML(mission.icon, mission.color || '#1976d2')}
                         </div>
                         <div class="mission-details">
                             <h4>${mission.name}</h4>
@@ -1294,7 +1294,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('mission-icon').value = '';
             // Reset preview
             const previewBox = document.getElementById('mission-icon-preview');
-            if (previewBox) previewBox.innerHTML = '<i class="fa-solid fa-question" style="color: #1976d2;"></i>';
+            if (previewBox) previewBox.innerHTML = getIconHTML('fa-question', '#1976d2');
             renderCustomMissions();
             if (typeof renderAdminMissionsList === 'function') renderAdminMissionsList();
         } catch (error) {
