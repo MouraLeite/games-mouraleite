@@ -831,6 +831,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 </g>
             </svg>`;
         }
+        if (iconName === 'svg-brasil') {
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.35));">
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-linejoin="round" transform="rotate(-5, 50, 50)">
+                    <rect x="12" y="30" width="76" height="50" rx="6" fill="#007A2E" stroke="#1A1A1A" stroke-width="3.5" />
+                    <rect x="12" y="25" width="76" height="50" rx="6" fill="#009C3B" stroke="#1A1A1A" stroke-width="3.5" />
+                    <polygon points="50,31 82,50 50,69 18,50" fill="#FFDF00" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round" />
+                    <circle cx="50" cy="50" r="14" fill="#002776" stroke="#1A1A1A" stroke-width="2.5" />
+                    <path d="M 36 52 Q 50 45 64 52" fill="none" stroke="#FFFFFF" stroke-width="2.5" />
+                    <circle cx="45" cy="56" r="1.5" fill="#FFFFFF" stroke="none" />
+                    <circle cx="50" cy="57" r="1" fill="#FFFFFF" stroke="none" />
+                    <circle cx="56" cy="55" r="1.2" fill="#FFFFFF" stroke="none" />
+                    <circle cx="52" cy="60" r="0.8" fill="#FFFFFF" stroke="none" />
+                    <path d="M 16 30 Q 30 26 40 30" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="3" stroke-linecap="round" />
+                </g>
+            </svg>`;
+        }
         const cls = getIconClass(iconName || 'fa-gift');
         return `<i class="${cls}" style="color: ${color || '#006837'};"></i>`;
     };
