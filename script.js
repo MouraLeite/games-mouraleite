@@ -2870,9 +2870,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${(tx.item || '').replace(/pts|Moura Coins/gi, 'ML Coins')}</td>
                 ${isAdmin ? `
                     <td style="text-align:center;">
-                        ${tx.evidenceId ? `<button class="view-photo-btn" onclick="viewPhoto(null, '${tx.evidenceId}')" title="Ver Comprovante">📸</button>` : (tx.photo ? `<button class="view-photo-btn" onclick="viewPhoto('${tx.photo}')" title="Ver Comprovante">📸</button>` : '')}
+                        ${tx.evidenceId ? `<button class="view-photo-btn" onclick="viewPhoto(null, '${tx.evidenceId}')" title="Ver Comprovante">📸</button>` : (tx.photo && tx.photo !== '[EVIDENCIA_SALVA]' ? `<button class="view-photo-btn" onclick="viewPhoto('${tx.photo}')" title="Ver Comprovante">📸</button>` : (tx.hasPhoto && !tx.evidenceId ? `<span title="Evidência não recuperável (falha no upload original)" style="cursor:help; opacity:0.4;">📸</span>` : ''))}
                         ${tx.link ? `<a href="${tx.link}" target="_blank" class="view-link-btn" title="Ver Publicação" style="text-decoration:none; margin-left:5px;">🔗</a>` : ''}
-                        ${(!tx.photo && !tx.evidenceId && !tx.link) ? '<span style="color:#ccc">-</span>' : ''}
+                        ${(!tx.photo && !tx.evidenceId && !tx.link && !tx.hasPhoto) ? '<span style="color:#ccc">-</span>' : ''}
                     </td>
                 ` : ''}
                 <td>${tx.date}</td>
@@ -3655,8 +3655,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 tip.textContent = 'Erro ao carregar foto do servidor.';
                 return;
             }
-        } else if (photoData === '[EVIDENCIA_SALVA]') {
-            tip.textContent = 'Erro: ID da evidência não encontrado.';
+        } else if (!photoData || photoData === '[EVIDENCIA_SALVA]') {
+            tip.textContent = 'Foto não disponível: o upload original falhou ou o ID foi perdido. Peça ao colaborador que reenvie a evidência.';
+            img.style.display = 'none';
             return;
         }
 
