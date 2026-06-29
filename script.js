@@ -2746,6 +2746,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyItemsPerPage = 50;
     let fullHistoryData = [];
 
+    // Filter state: 'all' | 'prizes' | 'missions'
+    let historyFilter = 'all';
+
+    // Helper: detect if a transaction is a prize redemption
+    const isPrizeRedemption = (tx) => /\(-\d+\s*(?:pts|ML Coins|Moura Coins)\)/i.test(tx.item || '');
+    // Helper: detect if a transaction is a mission completion
+    const isMissionEntry   = (tx) => /\(\+\d+\s*(?:pts|ML Coins|Moura Coins)\)/i.test(tx.item || '');
+
     // Helper: deduplicate history entries by exact match (including serverTime)
     const deduplicateHistory = (entries) => {
         const seen = new Set();
@@ -2826,6 +2834,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const _renderHistoryTable = (historyBody, historyHeader, isAdmin) => {
         if (!historyBody || !historyHeader) return;
 
+        // Apply active filter
+        let filteredData = fullHistoryData;
+        if (historyFilter === 'prizes') {
+            filteredData = fullHistoryData.filter(isPrizeRedemption);
+        } else if (historyFilter === 'missions') {
+            filteredData = fullHistoryData.filter(isMissionEntry);
+        }
+
         // Update Header
         if (isAdmin) {
             historyHeader.innerHTML = `
@@ -2848,21 +2864,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const paginationContainer = document.getElementById('history-pagination');
 
-        if (fullHistoryData.length === 0) {
+        if (filteredData.length === 0) {
             const colCount = isAdmin ? 6 : 4;
-            historyBody.innerHTML = `<tr><td colspan="${colCount}" style="text-align: center; padding: 2rem; color: #999;">Nenhum registro encontrado ainda.</td></tr>`;
+            const emptyMsg = historyFilter === 'prizes'
+                ? 'Nenhum resgate de prêmio encontrado.'
+                : historyFilter === 'missions'
+                    ? 'Nenhuma missão encontrada no histórico.'
+                    : 'Nenhum registro encontrado ainda.';
+            historyBody.innerHTML = `<tr><td colspan="${colCount}" style="text-align: center; padding: 2rem; color: #999;">${emptyMsg}</td></tr>`;
             if (paginationContainer) paginationContainer.classList.add('hidden');
             return;
         }
 
         // Pagination Logic
-        const totalPages = Math.ceil(fullHistoryData.length / historyItemsPerPage);
+        const totalPages = Math.ceil(filteredData.length / historyItemsPerPage);
         if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
         if (currentHistoryPage < 1) currentHistoryPage = 1;
 
         const startIndex = (currentHistoryPage - 1) * historyItemsPerPage;
         const endIndex = startIndex + historyItemsPerPage;
-        const pageData = fullHistoryData.slice(startIndex, endIndex);
+        const pageData = filteredData.slice(startIndex, endIndex);
 
         historyBody.innerHTML = pageData.map(tx => `
             <tr>
@@ -2925,6 +2946,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Make it available globally if needed for click handlers
     window.renderHistory = renderHistory;
+
+    // ── History Filter Button Listeners ────────────────────────────────────
+    const historyFilterBar = document.getElementById('history-filter-bar');
+    if (historyFilterBar) {
+        historyFilterBar.addEventListener('click', (e) => {
+            const btn = e.target.closest('.history-filter-btn');
+            if (!btn) return;
+            const newFilter = btn.dataset.filter;
+            if (newFilter === historyFilter) return; // already active
+
+            historyFilter = newFilter;
+            currentHistoryPage = 1; // reset to first page on filter change
+
+            // Update active state on buttons
+            historyFilterBar.querySelectorAll('.history-filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.filter === historyFilter);
+            });
+
+            // Re-render table with new filter (fullHistoryData already loaded)
+            const historyBody   = document.querySelector('#historico-page .history-table tbody');
+            const historyHeader = document.querySelector('#historico-page .history-table thead tr');
+            const isAdminLocal  = storedUser.email === 'admin@mouraleite.com.br';
+            _renderHistoryTable(historyBody, historyHeader, isAdminLocal);
+        });
+    }
 
     // Admin Tool: Clean duplicate history entries in Firestore for all users
     window.cleanDuplicateHistory = async () => {

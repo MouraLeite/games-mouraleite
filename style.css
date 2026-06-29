@@ -1857,4 +1857,61 @@ body {
     font-size: 0.95rem;
 }
 
+/* ── History Filter Bar ─────────────────────────────────── */
+.history-filter-bar {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+}
 
+.history-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.55rem 1.2rem;
+    border: 2px solid #e0e0e0;
+    background: #ffffff;
+    border-radius: 50px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.history-filter-btn i {
+    font-size: 0.8rem;
+}
+
+.history-filter-btn:hover {
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+    background: rgba(0, 104, 55, 0.04);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 104, 55, 0.12);
+}
+
+.history-filter-btn.active {
+    background: var(--primary-green);
+    border-color: var(--primary-green);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 104, 55, 0.30);
+    transform: translateY(-1px);
+}
+
+/* Resgates active state — uses orange accent */
+.history-filter-btn[data-filter="prizes"].active {
+    background: var(--secondary-orange);
+    border-color: var(--secondary-orange);
+    box-shadow: 0 4px 14px rgba(241, 134, 59, 0.30);
+}
+
+/* Missões active state — uses a blue accent */
+.history-filter-btn[data-filter="missions"].active {
+    background: #1976d2;
+    border-color: #1976d2;
+    box-shadow: 0 4px 14px rgba(25, 118, 210, 0.30);
+}
