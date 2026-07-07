@@ -2891,7 +2891,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${(tx.item || '').replace(/pts|Moura Coins/gi, 'ML Coins')}</td>
                 ${isAdmin ? `
                     <td style="text-align:center;">
-                        ${tx.evidenceId ? `<button class="view-photo-btn" onclick="viewPhoto(null, '${tx.evidenceId}')" title="Ver Comprovante">📸</button>` : (tx.photo && tx.photo !== '[EVIDENCIA_SALVA]' ? `<button class="view-photo-btn" onclick="viewPhoto('${tx.photo}')" title="Ver Comprovante">📸</button>` : (tx.hasPhoto && !tx.evidenceId ? `<span title="Evidência não recuperável (falha no upload original)" style="cursor:help; opacity:0.4;">📸</span>` : ''))}
+                        ${tx.evidenceId
+                            ? `<button class="view-photo-btn" onclick="viewPhoto(null, '${tx.evidenceId}')" title="Ver Comprovante">📸</button>`
+                            : (tx.photo && tx.photo !== '[EVIDENCIA_SALVA]'
+                                ? `<button class="view-photo-btn" onclick="viewPhoto('${tx.photo}')" title="Ver Comprovante">📸</button>`
+                                : (tx.hasPhoto && !tx.evidenceId
+                                    ? `<span title="⚠️ Falha no upload: a foto foi enviada pelo colaborador, mas não chegou ao servidor (provável falha de rede no momento do envio). Solicite que o colaborador reenvie a evidência." style="cursor:help; display:inline-block; background:#fff3e0; border:1px solid #ff9800; border-radius:4px; padding:2px 6px; font-size:10px; color:#e65100; font-weight:600;">⚠️ Falha upload</span>`
+                                    : ''))}
                         ${tx.link ? `<a href="${tx.link}" target="_blank" class="view-link-btn" title="Ver Publicação" style="text-decoration:none; margin-left:5px;">🔗</a>` : ''}
                         ${(!tx.photo && !tx.evidenceId && !tx.link && !tx.hasPhoto) ? '<span style="color:#ccc">-</span>' : ''}
                     </td>
@@ -3212,24 +3218,36 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save evidence (photo/link) to separate Firestore collection to avoid 1MB doc limit
     const saveEvidence = async (evidenceData) => {
         if (!dbAvailable) return null;
-        try {
-            const evidenceId = Date.now().toString() + '_' + Math.random().toString(36).substr(2, 6);
-            await db.collection('mission_evidence').doc(evidenceId).set({
-                id: evidenceId,
-                userEmail: storedUser.email,
-                userName: storedUser.username,
-                photo: evidenceData.photo || null,
-                link: evidenceData.link || null,
-                missionName: evidenceData.missionName || '',
-                createdAt: new Date().toISOString(),
-                serverTime: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            console.log('Evidência salva separadamente:', evidenceId);
-            return evidenceId;
-        } catch (e) {
-            console.error('Erro ao salvar evidência:', e);
-            return null;
+
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY_MS = 2000;
+        const evidenceId = Date.now().toString() + '_' + Math.random().toString(36).substr(2, 6);
+        const payload = {
+            id: evidenceId,
+            userEmail: storedUser.email,
+            userName: storedUser.username,
+            photo: evidenceData.photo || null,
+            link: evidenceData.link || null,
+            missionName: evidenceData.missionName || '',
+            createdAt: new Date().toISOString(),
+            serverTime: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                await db.collection('mission_evidence').doc(evidenceId).set(payload);
+                console.log(`Evidência salva (tentativa ${attempt}):`, evidenceId);
+                return evidenceId;
+            } catch (e) {
+                console.warn(`Tentativa ${attempt}/${MAX_RETRIES} de salvar evidência falhou:`, e.message);
+                if (attempt < MAX_RETRIES) {
+                    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+                } else {
+                    console.error('Erro crítico: todas as tentativas de salvar evidência falharam.', e);
+                }
+            }
         }
+        return null;
     };
 
     const saveAndSync = async () => {
@@ -3408,13 +3426,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 photoInput.accept = 'image/*';
                 photoInput.style.display = 'none'; // Importante para não aparecer na tela
                 document.body.appendChild(photoInput); // Fix: iOS Safari exige que o input esteja no DOM para o click funcionar
-                
+
+                // Comprime a imagem para garantir que caiba no Firestore (limite ~1MB por campo)
+                const compressImage = (dataUrl, maxPx = 1280, quality = 0.75) => new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let { width, height } = img;
+                        // Redimensiona mantendo proporção
+                        if (width > maxPx || height > maxPx) {
+                            if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+                            else { width = Math.round(width * maxPx / height); height = maxPx; }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = () => resolve(dataUrl); // fallback: usa original se falhar
+                    img.src = dataUrl;
+                });
+
                 photoInput.onchange = () => {
                     const file = photoInput.files[0];
                     if (file) {
+                        // Aviso para arquivos muito grandes (>15MB) antes de processar
+                        if (file.size > 15 * 1024 * 1024) {
+                            if(document.body.contains(photoInput)) document.body.removeChild(photoInput);
+                            alert('⚠️ Arquivo muito grande (máx. 15 MB). Por favor, escolha uma foto menor ou tire uma nova foto com menor resolução.');
+                            return;
+                        }
                         const reader = new FileReader();
-                        reader.onload = () => {
-                            completeMissionWithPhoto(missionId, missionName, missionPoints, reader.result, lastKey, dateKey);
+                        reader.onload = async () => {
+                            try {
+                                // Comprime antes de enviar — evita falha por tamanho no Firestore
+                                const compressed = await compressImage(reader.result);
+                                console.log(`Foto comprimida: ${Math.round(reader.result.length/1024)}KB → ${Math.round(compressed.length/1024)}KB`);
+                                completeMissionWithPhoto(missionId, missionName, missionPoints, compressed, lastKey, dateKey);
+                            } catch(compressErr) {
+                                console.warn('Compressão falhou, enviando original:', compressErr);
+                                completeMissionWithPhoto(missionId, missionName, missionPoints, reader.result, lastKey, dateKey);
+                            }
                             if(document.body.contains(photoInput)) document.body.removeChild(photoInput);
                         };
                         reader.readAsDataURL(file);
