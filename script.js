@@ -2805,6 +2805,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filter state: 'all' | 'prizes' | 'missions'
     let historyFilter = 'all';
+    let historyUserFilter = 'all';
+
+    const _populateHistoryUserFilter = () => {
+        const select = document.getElementById('history-user-filter');
+        const container = select ? select.parentElement : null;
+        if (!select || !container) return;
+
+        const isAdmin = storedUser.email === 'admin@mouraleite.com.br';
+        if (!isAdmin) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        container.classList.remove('hidden');
+
+        // Only populate once
+        if (select.options.length > 1) return;
+
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        const sortedUsers = allUsers
+            .filter(u => u.email !== 'admin@mouraleite.com.br')
+            .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+
+        sortedUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.email;
+            opt.textContent = `${u.username || 'Sem Nome'} (${u.email})`;
+            select.appendChild(opt);
+        });
+    };
 
     // Helper: detect if a transaction is a prize redemption
     const isPrizeRedemption = (tx) => /\(-\d+\s*(?:pts|ML Coins|Moura Coins)\)/i.test(tx.item || '');
@@ -2836,6 +2866,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const isAdmin = storedUser.email === 'admin@mouraleite.com.br';
         
         fullHistoryData = [];
+
+        _populateHistoryUserFilter();
 
         if (isAdmin) {
             // Admin: force fetch from server to ensure fresh data
@@ -2897,6 +2929,9 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredData = fullHistoryData.filter(isPrizeRedemption);
         } else if (historyFilter === 'missions') {
             filteredData = fullHistoryData.filter(isMissionEntry);
+        }
+        if (historyUserFilter !== 'all') {
+            filteredData = filteredData.filter(tx => tx.email === historyUserFilter);
         }
 
         // Update Header
@@ -3031,6 +3066,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const historyBody   = document.querySelector('#historico-page .history-table tbody');
             const historyHeader = document.querySelector('#historico-page .history-table thead tr');
             const isAdminLocal  = storedUser.email === 'admin@mouraleite.com.br';
+            _renderHistoryTable(historyBody, historyHeader, isAdminLocal);
+        });
+    }
+
+    const historyUserFilterSelect = document.getElementById('history-user-filter');
+    if (historyUserFilterSelect) {
+        historyUserFilterSelect.addEventListener('change', (e) => {
+            historyUserFilter = e.target.value;
+            currentHistoryPage = 1;
+            const historyBody = document.querySelector('#historico-page .history-table tbody');
+            const historyHeader = document.querySelector('#historico-page .history-table thead tr');
+            const isAdminLocal = storedUser.email === 'admin@mouraleite.com.br';
             _renderHistoryTable(historyBody, historyHeader, isAdminLocal);
         });
     }
