@@ -2806,6 +2806,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filter state: 'all' | 'prizes' | 'missions'
     let historyFilter = 'all';
     let historyUserFilter = 'all';
+    let historyEvidenceFilter = 'all';
     
     // Cache for evidence thumbnails to prevent excessive Firestore reads
     const evidencePhotoCache = {};
@@ -2935,6 +2936,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (historyUserFilter !== 'all') {
             filteredData = filteredData.filter(tx => tx.email === historyUserFilter);
+        }
+        if (historyEvidenceFilter === 'with_photo') {
+            filteredData = filteredData.filter(tx => tx.evidenceId || tx.photo || tx.hasPhoto);
+        } else if (historyEvidenceFilter === 'without_photo') {
+            filteredData = filteredData.filter(tx => !(tx.evidenceId || tx.photo || tx.hasPhoto));
         }
 
         // Update Header
@@ -3104,6 +3110,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (historyUserFilterSelect) {
         historyUserFilterSelect.addEventListener('change', (e) => {
             historyUserFilter = e.target.value;
+            currentHistoryPage = 1;
+            const historyBody = document.querySelector('#historico-page .history-table tbody');
+            const historyHeader = document.querySelector('#historico-page .history-table thead tr');
+            const isAdminLocal = storedUser.email === 'admin@mouraleite.com.br';
+            _renderHistoryTable(historyBody, historyHeader, isAdminLocal);
+        });
+    }
+
+    const historyEvidenceFilterSelect = document.getElementById('history-evidence-filter');
+    if (historyEvidenceFilterSelect) {
+        historyEvidenceFilterSelect.addEventListener('change', (e) => {
+            historyEvidenceFilter = e.target.value;
             currentHistoryPage = 1;
             const historyBody = document.querySelector('#historico-page .history-table tbody');
             const historyHeader = document.querySelector('#historico-page .history-table thead tr');
