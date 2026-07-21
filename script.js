@@ -305,6 +305,67 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     };
 
+    // User History Modal: filter state and cached data
+    let userHistoryModalData = [];
+    let userHistoryModalFilter = 'all';
+
+    // Helper: detect transaction types (reuse from history page)
+    const _isModalPrize   = (tx) => /\(-\d+\s*(?:pts|ML Coins|Moura Coins)\)/i.test(tx.item || '');
+    const _isModalMission = (tx) => /\(\+\d+\s*(?:pts|ML Coins|Moura Coins)\)/i.test(tx.item || '');
+
+    const _renderUserHistoryModalTable = (body) => {
+        if (!body) return;
+
+        let data = userHistoryModalData;
+        if (userHistoryModalFilter === 'missions') {
+            data = data.filter(_isModalMission);
+        } else if (userHistoryModalFilter === 'prizes') {
+            data = data.filter(_isModalPrize);
+        }
+
+        if (data.length === 0) {
+            const emptyMsg = userHistoryModalFilter === 'prizes'
+                ? 'Nenhum resgate de prêmio encontrado.'
+                : userHistoryModalFilter === 'missions'
+                    ? 'Nenhuma missão encontrada no histórico.'
+                    : 'Nenhum registro encontrado.';
+            body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:#999;">${emptyMsg}</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = data.map(tx => {
+            const earnedMatch = (tx.item || '').match(/\(\+(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
+            const spentMatch  = (tx.item || '').match(/\(-(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
+            const isRejected  = tx.status === 'Recusado' || tx.status === 'Cancelado';
+
+            let ptsDisplay = '-';
+            if (isRejected) {
+                ptsDisplay = `<span style="color:#f44336;text-decoration:line-through;">Recusado</span>`;
+            } else if (earnedMatch) {
+                ptsDisplay = `<span style="color:#4caf50;font-weight:700;">+${earnedMatch[1]} ML Coins</span>`;
+            } else if (spentMatch) {
+                ptsDisplay = `<span style="color:#e53935;font-weight:700;">-${spentMatch[1]} ML Coins</span>`;
+            }
+
+            const statusColors = {
+                'Concluído': '#4caf50', 'Validando': '#ff9800',
+                'Recusado': '#f44336', 'Cancelado': '#9e9e9e', 'Ativo': '#2196f3'
+            };
+            const sColor = statusColors[tx.status] || '#999';
+
+            return `<tr>
+                <td>${tx.date || '—'}</td>
+                <td>${tx.time || '—'}</td>
+                <td>${(tx.item || '—').replace(/pts|Moura Coins/gi, 'ML Coins')}</td>
+                <td style="text-align:center;">${ptsDisplay}</td>
+                <td>
+                    <span class="status-badge" style="background:${sColor}20;color:${sColor};border:1px solid ${sColor}40;">${tx.status || '—'}</span>
+                    ${tx.rejectReason ? `<div style="font-size: 11px; color: #f44336; margin-top: 4px; line-height: 1.2;">Motivo: ${tx.rejectReason}</div>` : ''}
+                </td>
+            </tr>`;
+        }).join('');
+    };
+
     window.viewUserHistory = async (email, username) => {
         const modal = document.getElementById('user-history-modal');
         const body = document.getElementById('user-history-modal-body');
@@ -313,6 +374,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const summary = document.getElementById('user-history-summary');
 
         if (!modal) return;
+
+        // Reset filter state
+        userHistoryModalFilter = 'all';
+        userHistoryModalData = [];
+        const filterBar = document.getElementById('user-history-filter-bar');
+        if (filterBar) {
+            filterBar.querySelectorAll('.history-filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.filter === 'all');
+            });
+        }
 
         title.textContent = `📋 Histórico de Pontos — ${username}`;
         subtitle.textContent = email;
@@ -330,19 +401,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const userData = doc.data();
             const history = userData.history || [];
 
-            // Sort newest first
+            // Sort newest first and store for filtering
             const sorted = [...history].sort((a, b) => (b.serverTime || 0) - (a.serverTime || 0));
+            userHistoryModalData = sorted;
 
-            // Calculate totals
+            // Calculate totals (always based on full data, not filtered)
             let totalEarned = 0;
             let totalSpent = 0;
+            let missionCount = 0;
+            let prizeCount = 0;
 
             sorted.forEach(tx => {
                 const earnedMatch = (tx.item || '').match(/\(\+(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
-                const spentMatch  = (tx.item || '').match(/\(\-(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
+                const spentMatch  = (tx.item || '').match(/\(-(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
                 if (tx.status === 'Recusado' || tx.status === 'Cancelado') return;
-                if (earnedMatch) totalEarned += parseInt(earnedMatch[1]);
-                else if (spentMatch) totalSpent += parseInt(spentMatch[1]);
+                if (earnedMatch) { totalEarned += parseInt(earnedMatch[1]); missionCount++; }
+                else if (spentMatch) { totalSpent += parseInt(spentMatch[1]); prizeCount++; }
             });
 
             // Summary pills
@@ -357,49 +431,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     💰 Saldo Calculado: ${totalEarned - totalSpent} ML Coins
                 </div>
                 <div style="background:#f3e5f5;color:#4a148c;padding:8px 16px;border-radius:20px;font-size:0.85rem;font-weight:600;">
-                    📊 Total de Registros: ${sorted.length}
+                    📊 Total: ${sorted.length} (${missionCount} missões, ${prizeCount} resgates)
                 </div>
             `;
 
-            if (sorted.length === 0) {
-                body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#999;">Nenhum registro encontrado.</td></tr>';
-                return;
-            }
-
-            body.innerHTML = sorted.map(tx => {
-                const earnedMatch = (tx.item || '').match(/\(\+(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
-                const spentMatch  = (tx.item || '').match(/\(\-(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
-                const isRejected  = tx.status === 'Recusado' || tx.status === 'Cancelado';
-
-                let ptsDisplay = '-';
-                let ptsCls = '';
-                if (isRejected) {
-                    ptsDisplay = `<span style="color:#f44336;text-decoration:line-through;">Recusado</span>`;
-                } else if (earnedMatch) {
-                    ptsDisplay = `<span style="color:#4caf50;font-weight:700;">+${earnedMatch[1]} ML Coins</span>`;
-                    ptsCls = 'earned';
-                } else if (spentMatch) {
-                    ptsDisplay = `<span style="color:#e53935;font-weight:700;">-${spentMatch[1]} ML Coins</span>`;
-                    ptsCls = 'spent';
-                }
-
-                const statusColors = {
-                    'Concluído': '#4caf50', 'Validando': '#ff9800',
-                    'Recusado': '#f44336', 'Cancelado': '#9e9e9e', 'Ativo': '#2196f3'
-                };
-                const sColor = statusColors[tx.status] || '#999';
-
-                return `<tr>
-                    <td>${tx.date || '—'}</td>
-                    <td>${tx.time || '—'}</td>
-                    <td>${(tx.item || '—').replace(/pts|Moura Coins/gi, 'ML Coins')}</td>
-                    <td style="text-align:center;">${ptsDisplay}</td>
-                    <td>
-                        <span class="status-badge" style="background:${sColor}20;color:${sColor};border:1px solid ${sColor}40;">${tx.status || '—'}</span>
-                        ${tx.rejectReason ? `<div style="font-size: 11px; color: #f44336; margin-top: 4px; line-height: 1.2;">Motivo: ${tx.rejectReason}</div>` : ''}
-                    </td>
-                </tr>`;
-            }).join('');
+            // Render table with current filter
+            _renderUserHistoryModalTable(body);
 
         } catch (err) {
             console.error('Erro ao carregar histórico do usuário:', err);
@@ -416,6 +453,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userHistoryModal) {
         userHistoryModal.addEventListener('click', (e) => {
             if (e.target === userHistoryModal) userHistoryModal.classList.add('hidden');
+        });
+    }
+
+    // User History Modal: Filter button listeners
+    const userHistoryFilterBar = document.getElementById('user-history-filter-bar');
+    if (userHistoryFilterBar) {
+        userHistoryFilterBar.addEventListener('click', (e) => {
+            const btn = e.target.closest('.history-filter-btn');
+            if (!btn) return;
+            const newFilter = btn.dataset.filter;
+            if (newFilter === userHistoryModalFilter) return;
+
+            userHistoryModalFilter = newFilter;
+
+            userHistoryFilterBar.querySelectorAll('.history-filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.filter === userHistoryModalFilter);
+            });
+
+            const body = document.getElementById('user-history-modal-body');
+            _renderUserHistoryModalTable(body);
         });
     }
 
@@ -3215,6 +3272,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderNotifications();
 
+    // ── Anti-fraud: Per-user duplicate photo detection ─────────────────────
+    // Computes a SHA-256 hash of the compressed image data so we can detect
+    // if the SAME user tries to re-upload a photo they already submitted.
+    // Different users CAN submit the same photo (group photos).
+    const computeImageHash = async (dataUrl) => {
+        try {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(dataUrl);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch (e) {
+            console.warn('Erro ao calcular hash da imagem (fallback):', e);
+            let hash = 0;
+            for (let i = 0; i < Math.min(dataUrl.length, 50000); i++) {
+                const char = dataUrl.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash |= 0;
+            }
+            return 'fb_' + Math.abs(hash).toString(36);
+        }
+    };
+
+    const checkDuplicatePhoto = async (photoHash) => {
+        if (!dbAvailable || !photoHash) return false;
+        try {
+            const snapshot = await db.collection('mission_evidence')
+                .where('userEmail', '==', storedUser.email)
+                .where('photoHash', '==', photoHash)
+                .limit(1)
+                .get();
+            return !snapshot.empty;
+        } catch (e) {
+            console.warn('Erro ao verificar foto duplicada (permitindo envio):', e);
+            return false;
+        }
+    };
+
     // Save evidence (photo/link) to separate Firestore collection to avoid 1MB doc limit
     const saveEvidence = async (evidenceData) => {
         if (!dbAvailable) return null;
@@ -3227,6 +3322,7 @@ document.addEventListener('DOMContentLoaded', () => {
             userEmail: storedUser.email,
             userName: storedUser.username,
             photo: evidenceData.photo || null,
+            photoHash: evidenceData.photoHash || null,
             link: evidenceData.link || null,
             missionName: evidenceData.missionName || '',
             createdAt: new Date().toISOString(),
@@ -3555,6 +3651,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const earned = Math.floor(missionPoints * multiplier);
         const serverTimestamp = getServerTime();
 
+        // Anti-fraud: compute hash and check for duplicate photos (per-user only)
+        let photoHash = null;
+        try {
+            photoHash = await computeImageHash(photoData);
+            const isDuplicate = await checkDuplicatePhoto(photoHash);
+            if (isDuplicate) {
+                alert('⚠️ Esta foto já foi enviada anteriormente por você em outra missão.\n\nPor favor, tire uma nova foto para comprovar esta missão.');
+                return;
+            }
+        } catch (hashErr) {
+            console.warn('Verificação anti-fraude falhou, prosseguindo com o envio:', hashErr);
+        }
+
         try {
             userPoints += earned;
             storedUser.points = userPoints;
@@ -3576,7 +3685,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Save photo evidence to separate Firestore collection (avoids 1MB doc limit)
-            const evidenceId = await saveEvidence({ photo: photoData, missionName: missionName });
+            const evidenceId = await saveEvidence({ photo: photoData, missionName: missionName, photoHash: photoHash });
 
             const transaction = {
                 user: storedUser.username,

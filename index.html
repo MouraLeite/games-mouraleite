@@ -817,6 +817,18 @@
             </div>
             <!-- Summary Pills -->
             <div id="user-history-summary" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:1rem;"></div>
+            <!-- Filter Bar -->
+            <div class="history-filter-bar" id="user-history-filter-bar">
+                <button class="history-filter-btn active" data-filter="all">
+                    <i class="fa-solid fa-list"></i> Todos
+                </button>
+                <button class="history-filter-btn" data-filter="missions">
+                    <i class="fa-solid fa-bullseye"></i> Missões
+                </button>
+                <button class="history-filter-btn" data-filter="prizes">
+                    <i class="fa-solid fa-gift"></i> Resgates
+                </button>
+            </div>
             <!-- Table -->
             <div style="overflow-y: auto; flex: 1;">
                 <table class="history-table" style="width:100%;">
