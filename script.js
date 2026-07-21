@@ -2986,9 +2986,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const endIndex = startIndex + historyItemsPerPage;
         const pageData = filteredData.slice(startIndex, endIndex);
 
+        // Build user points map for tooltips
+        const allUsers = JSON.parse(localStorage.getItem('moura_leite_all_users')) || [];
+        const userPointsMap = {};
+        allUsers.forEach(u => {
+            userPointsMap[u.email] = u.points || 0;
+        });
+
         historyBody.innerHTML = pageData.map(tx => `
             <tr>
-                ${isAdmin ? `<td><strong>${tx.user}</strong></td>` : ''}
+                ${isAdmin ? `<td style="cursor:help;" title="Saldo Atual: ${userPointsMap[tx.email] !== undefined ? userPointsMap[tx.email] : '?'} ML Coins"><strong>${tx.user}</strong></td>` : ''}
                 <td>${(tx.item || '').replace(/pts|Moura Coins/gi, 'ML Coins')}</td>
                 ${isAdmin ? `
                     <td style="text-align:center;">
