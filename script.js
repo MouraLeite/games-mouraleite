@@ -179,9 +179,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         needsUpdate = true;
                     }
                     
-                    // CRITICAL FIX: Sync all completion flags and history so local state matches server
+                    // CRITICAL FIX: Sync all completion flags, history, and profile data so local state matches server
                     Object.keys(currentUserInDb).forEach(key => {
-                        if (key.startsWith('last') || key === 'history' || key.endsWith('Count') || key === 'streak') {
+                        if (key.startsWith('last') || key === 'history' || key.endsWith('Count') || key === 'streak' || ['username', 'dept', 'diretoria', 'disabled', 'rank'].includes(key)) {
                             // Only update if stringified values differ to avoid deep comparison complexity
                             if (JSON.stringify(storedUser[key]) !== JSON.stringify(currentUserInDb[key])) {
                                 storedUser[key] = currentUserInDb[key];
