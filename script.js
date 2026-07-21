@@ -2806,6 +2806,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filter state: 'all' | 'prizes' | 'missions'
     let historyFilter = 'all';
     let historyUserFilter = 'all';
+    
+    // Cache for evidence thumbnails to prevent excessive Firestore reads
+    const evidencePhotoCache = {};
 
     const _populateHistoryUserFilter = () => {
         const select = document.getElementById('history-user-filter');
@@ -2984,9 +2987,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${isAdmin ? `
                     <td style="text-align:center;">
                         ${tx.evidenceId
-                            ? `<button class="view-photo-btn" onclick="viewPhoto(null, '${tx.evidenceId}')" title="Ver Comprovante">📸</button>`
+                            ? `<div class="evidence-thumb-container" data-evidence-id="${tx.evidenceId}" onclick="viewPhoto(null, '${tx.evidenceId}')" style="width:40px; height:40px; background:#eee; border-radius:4px; margin:0 auto; cursor:pointer; display:flex; align-items:center; justify-content:center; overflow:hidden; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" title="Ver Comprovante"><i class="fa-solid fa-spinner fa-spin" style="color:#aaa; font-size:12px;"></i></div>`
                             : (tx.photo && tx.photo !== '[EVIDENCIA_SALVA]'
-                                ? `<button class="view-photo-btn" onclick="viewPhoto('${tx.photo}')" title="Ver Comprovante">📸</button>`
+                                ? `<img src="${tx.photo}" onclick="viewPhoto('${tx.photo}')" style="width:40px; height:40px; object-fit:cover; border-radius:4px; cursor:pointer; border: 1px solid #ccc; display:block; margin: 0 auto; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" title="Ver Comprovante">`
                                 : (tx.hasPhoto && !tx.evidenceId
                                     ? `<span title="⚠️ Falha no upload: a foto foi enviada pelo colaborador, mas não chegou ao servidor (provável falha de rede no momento do envio). Solicite que o colaborador reenvie a evidência." style="cursor:help; display:inline-block; background:#fff3e0; border:1px solid #ff9800; border-radius:4px; padding:2px 6px; font-size:10px; color:#e65100; font-weight:600;">⚠️ Falha upload</span>`
                                     : ''))}
@@ -3009,6 +3012,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 ` : ''}
             </tr>
         `).join('');
+
+        // Fetch thumbnails asynchronously for admin view
+        if (isAdmin && dbAvailable) {
+            const thumbContainers = historyBody.querySelectorAll('.evidence-thumb-container');
+            thumbContainers.forEach(async (container) => {
+                const evidenceId = container.dataset.evidenceId;
+                if (!evidenceId) return;
+                
+                if (evidencePhotoCache[evidenceId]) {
+                    container.innerHTML = `<img src="${evidencePhotoCache[evidenceId]}" style="width:100%; height:100%; object-fit:cover;">`;
+                    return;
+                }
+                
+                try {
+                    const doc = await db.collection('mission_evidence').doc(evidenceId).get();
+                    if (doc.exists && doc.data().photo) {
+                        evidencePhotoCache[evidenceId] = doc.data().photo;
+                        container.innerHTML = `<img src="${doc.data().photo}" style="width:100%; height:100%; object-fit:cover;">`;
+                    } else {
+                        container.innerHTML = `<i class="fa-solid fa-image-slash" style="color:#aaa;" title="Foto indisponível"></i>`;
+                    }
+                } catch (e) {
+                    console.warn('Erro ao carregar thumbnail:', e);
+                    container.innerHTML = `<i class="fa-solid fa-image-slash" style="color:#aaa;" title="Erro ao carregar"></i>`;
+                }
+            });
+        }
 
         // Update Pagination UI
         if (paginationContainer) {
