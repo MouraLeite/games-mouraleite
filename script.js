@@ -488,6 +488,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!iconName) return 'fa-solid fa-bullseye';
         if (iconName === 'svg-cap') return 'svg-cap'; // special SVG icon
         if (iconName === 'svg-capsule') return 'svg-capsule'; // special SVG icon
+        if (iconName === 'svg-ticket') return 'svg-ticket'; // special SVG icon
+        if (iconName === 'svg-voucher') return 'svg-voucher'; // special SVG icon
+        if (iconName === 'svg-ticket-premio') return 'svg-ticket-premio'; // special SVG icon
         if (iconName.startsWith('fa-')) {
             // Check if it already has a style prefix (solid, brands, regular)
             if (iconName.startsWith('fa-solid ') || iconName.startsWith('fa-brands ') || iconName.startsWith('fa-regular ') || iconName.startsWith('fa-light ') || iconName.startsWith('fa-thin ')) {
