@@ -181,7 +181,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // CRITICAL FIX: Sync all completion flags, history, and profile data so local state matches server
                     Object.keys(currentUserInDb).forEach(key => {
-                        if (key.startsWith('last') || key === 'history' || key.endsWith('Count') || key === 'streak' || ['username', 'dept', 'diretoria', 'disabled', 'rank'].includes(key)) {
+                        // BUG FIX: Exclude 'rank' from Firebase sync.
+                        // The rank is always recalculated locally from spent points in updateUIWithUser().
+                        // Syncing it from Firebase caused stale/wrong ranks (e.g., showing 'Platina'
+                        // for a user just reaching 'Bronze') and broke the level-up social wall detection.
+                        if (key.startsWith('last') || key === 'history' || key.endsWith('Count') || key === 'streak' || ['username', 'dept', 'diretoria', 'disabled'].includes(key)) {
                             // Only update if stringified values differ to avoid deep comparison complexity
                             if (JSON.stringify(storedUser[key]) !== JSON.stringify(currentUserInDb[key])) {
                                 storedUser[key] = currentUserInDb[key];
@@ -205,6 +209,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
                         if (typeof updatePointsDisplay === 'function') updatePointsDisplay();
                         if (typeof renderCustomMissions === 'function') renderCustomMissions();
+                        // ROOT CAUSE FIX: Update the hero panel (name, rank, progress bar) after
+                        // Firebase sync. Previously, if the username/rank came from Firebase AFTER
+                        // the initial render, the hero h1 and subtitle kept the stale HTML placeholder.
+                        if (typeof updateUIWithUser === 'function') updateUIWithUser();
                     }
                 }
             }
@@ -2026,8 +2034,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentRankObj = ranks.find((r, i) => spentPts <= r.next) || ranks[ranks.length-1];
         const nextRankObj = ranks[ranks.indexOf(currentRankObj) + 1] || currentRankObj;
         
-        const previousRank = storedUser.rank;
+        // BUG FIX: use the last *calculated* rank for comparison (not the stale Firebase value).
+        // storedUser._lastCalculatedRank is updated only by this function, so it's always
+        // the result of the previous local computation — never a stale server value.
+        const previousRank = storedUser._lastCalculatedRank || null;
         storedUser.rank = currentRankObj.name;
+        storedUser._lastCalculatedRank = currentRankObj.name;
 
         if (previousRank && previousRank !== currentRankObj.name) {
             const prevIndex = ranks.findIndex(r => r.name === previousRank);
@@ -2054,7 +2066,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update Hero Progress
         const heroTitle = document.querySelector('.hero-text h1');
-        const heroSub = document.querySelector('.hero-text p');
+        // BUG FIX: use the element's id instead of the generic '.hero-text p' selector
+        // so the dynamic text correctly overwrites the static HTML placeholder.
+        const heroSub = document.getElementById('hero-rank-msg') || document.querySelector('.hero-text p');
         const rankFill = document.querySelector('.rank-bar-fill');
         const rankLabels = document.querySelectorAll('.rank-labels span');
         const rankStatusText = document.querySelector('.rank-status');
