@@ -912,6 +912,105 @@ document.addEventListener('DOMContentLoaded', () => {
                 </g>
             </svg>`;
         }
+        if (iconName === 'svg-ticket') {
+            // Ticket Clássico Dourado — ingresso com canhoto e picote
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 5px 10px rgba(0,0,0,0.5));">
+                <defs>
+                    <linearGradient id="tg1a" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#F9E79F"/>
+                        <stop offset="100%" stop-color="#E67E22"/>
+                    </linearGradient>
+                    <linearGradient id="tg1b" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#D4AC0D"/>
+                        <stop offset="100%" stop-color="#9A6D00"/>
+                    </linearGradient>
+                </defs>
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="11" y="34" width="80" height="42" rx="6" fill="#3a1e00" stroke="none" opacity="0.35" transform="translate(2,5)"/>
+                    <rect x="9" y="29" width="82" height="42" rx="6" fill="url(#tg1a)" stroke-width="3"/>
+                    <rect x="9" y="29" width="82" height="9" rx="5" fill="url(#tg1b)" stroke-width="3"/>
+                    <line x1="27" y1="29" x2="27" y2="71" stroke="#1A1A1A" stroke-width="2" stroke-dasharray="4 3.5"/>
+                    <path d="M 9 44 A 8 8 0 0 1 9 57" fill="#0f0f1a" stroke="#1A1A1A" stroke-width="2.5"/>
+                    <path d="M 91 44 A 8 8 0 0 0 91 57" fill="#0f0f1a" stroke="#1A1A1A" stroke-width="2.5"/>
+                    <rect x="9" y="38" width="18" height="33" rx="3" fill="url(#tg1b)" stroke="none"/>
+                    <circle cx="18" cy="47" r="2" fill="#FFFFFF" opacity="0.75" stroke="none"/>
+                    <circle cx="18" cy="53" r="2" fill="#FFFFFF" opacity="0.75" stroke="none"/>
+                    <circle cx="18" cy="59" r="2" fill="#FFFFFF" opacity="0.75" stroke="none"/>
+                    <polygon points="57,37 59.5,44 67,44 61,48.5 63.5,56 57,51.5 50.5,56 53,48.5 47,44 54.5,44" fill="#FFFFFF" opacity="0.9" stroke="none"/>
+                    <line x1="29" y1="57" x2="89" y2="57" stroke="rgba(0,0,0,0.18)" stroke-width="1.5"/>
+                    <rect x="30" y="60" width="48" height="5" rx="2.5" fill="rgba(0,0,0,0.18)" stroke="none"/>
+                    <rect x="36" y="67" width="36" height="3.5" rx="1.8" fill="rgba(0,0,0,0.12)" stroke="none"/>
+                    <path d="M 12 32 Q 38 27 60 33" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M 12 37 Q 28 34 40 38" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.5" stroke-linecap="round"/>
+                </g>
+            </svg>`;
+        }
+        if (iconName === 'svg-voucher') {
+            // Voucher Azul com laço de presente
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 5px 10px rgba(0,0,0,0.5));">
+                <defs>
+                    <linearGradient id="vg2a" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#5DADE2"/>
+                        <stop offset="100%" stop-color="#1A5276"/>
+                    </linearGradient>
+                </defs>
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="13" y="33" width="76" height="44" rx="7" fill="#061520" stroke="none" opacity="0.4" transform="translate(2,5)"/>
+                    <rect x="11" y="28" width="78" height="44" rx="7" fill="url(#vg2a)" stroke-width="3"/>
+                    <path d="M 11 43 A 8 8 0 0 1 11 57" fill="#0f0f1a" stroke="#1A1A1A" stroke-width="2.5"/>
+                    <path d="M 89 43 A 8 8 0 0 0 89 57" fill="#0f0f1a" stroke="#1A1A1A" stroke-width="2.5"/>
+                    <line x1="27" y1="28" x2="27" y2="72" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" stroke-dasharray="4 3"/>
+                    <rect x="11" y="28" width="16" height="44" rx="5" fill="rgba(0,0,0,0.2)" stroke="none"/>
+                    <circle cx="19" cy="46" r="2" fill="rgba(255,255,255,0.6)" stroke="none"/>
+                    <circle cx="19" cy="52" r="2" fill="rgba(255,255,255,0.6)" stroke="none"/>
+                    <circle cx="19" cy="58" r="2" fill="rgba(255,255,255,0.6)" stroke="none"/>
+                    <rect x="42" y="37" width="18" height="14" rx="2" fill="#FFFFFF" opacity="0.9" stroke="#1A1A1A" stroke-width="1.5"/>
+                    <rect x="42" y="43" width="18" height="2.5" fill="#E74C3C" stroke="none"/>
+                    <rect x="49.5" y="37" width="2.5" height="14" fill="#E74C3C" stroke="none"/>
+                    <path d="M 50 37 C 46 31, 40 32, 42 36" fill="#E74C3C" stroke="#1A1A1A" stroke-width="1.2" stroke-linecap="round"/>
+                    <path d="M 52 37 C 56 31, 62 32, 60 36" fill="#E74C3C" stroke="#1A1A1A" stroke-width="1.2" stroke-linecap="round"/>
+                    <circle cx="51" cy="37" r="2.5" fill="#C0392B" stroke="#1A1A1A" stroke-width="1.2"/>
+                    <rect x="30" y="57" width="52" height="5" rx="2.5" fill="rgba(255,255,255,0.25)" stroke="none"/>
+                    <rect x="36" y="64" width="40" height="3.5" rx="1.8" fill="rgba(255,255,255,0.15)" stroke="none"/>
+                    <path d="M 14 31 Q 40 26 62 32" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2.5" stroke-linecap="round"/>
+                </g>
+            </svg>`;
+        }
+        if (iconName === 'svg-ticket-premio') {
+            // Ticket Premium Laranja/Vermelho — estilo ingresso de show com estrela
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 5px 12px rgba(0,0,0,0.55));">
+                <defs>
+                    <linearGradient id="og3a" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#FF8C42"/>
+                        <stop offset="100%" stop-color="#C0392B"/>
+                    </linearGradient>
+                    <linearGradient id="og3b" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#C0392B"/>
+                        <stop offset="100%" stop-color="#8E1A10"/>
+                    </linearGradient>
+                </defs>
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="29" width="84" height="44" rx="6" fill="#3a0900" stroke="none" opacity="0.4" transform="translate(2,6)"/>
+                    <rect x="7" y="23" width="86" height="54" rx="7" fill="url(#og3a)" stroke-width="3"/>
+                    <rect x="7" y="23" width="86" height="11" rx="6" fill="url(#og3b)" stroke-width="3"/>
+                    <path d="M 7 46 A 9 9 0 0 1 7 59" fill="#0f0f1a" stroke="#1A1A1A" stroke-width="3"/>
+                    <path d="M 93 46 A 9 9 0 0 0 93 59" fill="#0f0f1a" stroke="#1A1A1A" stroke-width="3"/>
+                    <line x1="27" y1="34" x2="27" y2="77" stroke="#1A1A1A" stroke-width="2" stroke-dasharray="4 3.5"/>
+                    <rect x="7" y="34" width="20" height="43" rx="4" fill="url(#og3b)" stroke="none"/>
+                    <circle cx="17" cy="46" r="2.2" fill="rgba(255,255,255,0.7)" stroke="none"/>
+                    <circle cx="17" cy="52" r="2.2" fill="rgba(255,255,255,0.7)" stroke="none"/>
+                    <circle cx="17" cy="58" r="2.2" fill="rgba(255,255,255,0.7)" stroke="none"/>
+                    <circle cx="17" cy="64" r="2.2" fill="rgba(255,255,255,0.7)" stroke="none"/>
+                    <circle cx="57" cy="40" r="10" fill="#FFFFFF" opacity="0.15" stroke="#FFFFFF" stroke-width="1.5"/>
+                    <polygon points="57,32 59.2,38.5 66,38.5 60.5,42.5 62.8,49 57,45 51.2,49 53.5,42.5 48,38.5 54.8,38.5" fill="#FFFFFF" opacity="0.95" stroke="none"/>
+                    <line x1="29" y1="60" x2="91" y2="60" stroke="rgba(0,0,0,0.2)" stroke-width="1.5"/>
+                    <rect x="30" y="64" width="52" height="5" rx="2.5" fill="rgba(0,0,0,0.2)" stroke="none"/>
+                    <rect x="36" y="71" width="40" height="3.5" rx="1.8" fill="rgba(0,0,0,0.12)" stroke="none"/>
+                    <path d="M 10 26 Q 42 21 72 27" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M 10 31 Q 30 27 48 32" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.5" stroke-linecap="round"/>
+                </g>
+            </svg>`;
+        }
         const cls = getIconClass(iconName || 'fa-gift');
         return `<i class="${cls}" style="color: ${color || '#006837'};"></i>`;
     };
