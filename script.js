@@ -2034,17 +2034,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentRankObj = ranks.find((r, i) => spentPts <= r.next) || ranks[ranks.length-1];
         const nextRankObj = ranks[ranks.indexOf(currentRankObj) + 1] || currentRankObj;
         
-        // BUG FIX: use the last *calculated* rank for comparison (not the stale Firebase value).
-        // storedUser._lastCalculatedRank is updated only by this function, so it's always
-        // the result of the previous local computation — never a stale server value.
-        const previousRank = storedUser._lastCalculatedRank || null;
+        // ── Level-up detection ───────────────────────────────────────────────────
+        // We compare the NEW calculated rank against the PREVIOUSLY STORED rank
+        // (persisted in localStorage). Since Firebase sync no longer overwrites the
+        // 'rank' field (fixed earlier), storedUser.rank from localStorage is always
+        // the last value computed by THIS function — never a stale server value.
+        //
+        // This means the detection works correctly even across page reloads:
+        //   - Session 1: user spends coins → rank updated to 'Bronze' → saved to localStorage
+        //   - Session 2: page loads → previousRank = 'Bronze' (from localStorage) → no false event
+        //   - Session 2: user spends more → rank becomes 'Prata' → event fires ✅
+        const previousRank = storedUser.rank || null;
         storedUser.rank = currentRankObj.name;
-        storedUser._lastCalculatedRank = currentRankObj.name;
+
+        // Persist the newly calculated rank to localStorage IMMEDIATELY so that:
+        // a) The next page load correctly reads it as previousRank
+        // b) Any subsequent sync that saves storedUser also includes the fresh rank
+        try {
+            localStorage.setItem('moura_leite_user', JSON.stringify(storedUser));
+        } catch(e) {}
 
         if (previousRank && previousRank !== currentRankObj.name) {
             const prevIndex = ranks.findIndex(r => r.name === previousRank);
             const currIndex = ranks.findIndex(r => r.name === currentRankObj.name);
             if (currIndex > prevIndex) {
+                // User levelled up → announce on the social wall
                 logSocialActivity(`atingiu o nível ${currentRankObj.name}! 🚀`, currentRankObj.icon);
             }
         }
@@ -4033,6 +4047,104 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePointsDisplay();
     updateRanking();
     updateUIWithUser();
+
+    // ── Mural de Conquistas — Real-time Social Feed ────────────────────────────
+    // Reads from Firestore 'social_feed' collection and renders live in the dashboard.
+    // Level-up events get special gold highlight and rank badge styling.
+    if (dbAvailable) {
+        const rankColors = {
+            'Bronze':   { bg: '#cd7f32', light: '#fdf3e7', icon: 'fa-medal' },
+            'Prata':    { bg: '#9e9e9e', light: '#f5f5f5', icon: 'fa-award' },
+            'Ouro':     { bg: '#f9a825', light: '#fffde7', icon: 'fa-trophy' },
+            'Platina':  { bg: '#78909c', light: '#eceff1', icon: 'fa-crown' },
+            'Diamante': { bg: '#29b6f6', light: '#e1f5fe', icon: 'fa-gem'   },
+        };
+
+        const _renderSocialFeed = (docs) => {
+            const feedList = document.getElementById('social-feed-list');
+            if (!feedList) return;
+
+            // Filter: show ONLY level-up events in the Mural de Conquistas
+            const levelUpDocs = docs.filter(doc => {
+                const data = doc.data ? doc.data() : doc;
+                return (data.action || '').includes('atingiu o nível');
+            });
+
+            if (levelUpDocs.length === 0) {
+                feedList.innerHTML = '<p style="padding:1rem; color:#999; text-align:center; font-size:0.85rem;">Nenhuma subida de nível ainda. Seja o primeiro! 🚀</p>';
+                return;
+            }
+
+            feedList.innerHTML = levelUpDocs.map(doc => {
+                const data = doc.data ? doc.data() : doc;
+                const ts = data.timestamp;
+                let timeLabel = '';
+                if (ts) {
+                    const d = ts.toDate ? ts.toDate() : new Date(ts);
+                    const diff = Date.now() - d.getTime();
+                    if (diff < 60000)        timeLabel = 'agora mesmo';
+                    else if (diff < 3600000) timeLabel = `há ${Math.floor(diff/60000)}min`;
+                    else if (diff < 86400000)timeLabel = `há ${Math.floor(diff/3600000)}h`;
+                    else                     timeLabel = d.toLocaleDateString('pt-BR');
+                }
+
+                const m = (data.action || '').match(/atingiu o nível ([^!]+)!/);
+                const rankName = m ? m[1].trim() : '';
+                const rankStyle = rankColors[rankName] || { bg: '#006837', light: '#e8f5e9', icon: 'fa-trophy' };
+
+                // Shorten display name (first two words max)
+                const displayName = (data.user || 'Colaborador')
+                    .split(' ').slice(0, 2).join(' ');
+
+                return `
+                    <div class="feed-item feed-item--levelup" style="
+                        display:flex; align-items:center; gap:10px;
+                        padding:10px 12px; border-radius:10px; margin-bottom:6px;
+                        background:${rankStyle.light};
+                        border-left:4px solid ${rankStyle.bg};
+                        animation: feedSlideIn 0.4s ease;">
+                        <div style="
+                            width:34px; height:34px; border-radius:50%; flex-shrink:0;
+                            background:${rankStyle.bg}; color:#fff;
+                            display:flex; align-items:center; justify-content:center;
+                            font-size:0.85rem;">
+                            <i class="fa-solid ${rankStyle.icon}"></i>
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <p style="margin:0; font-size:0.82rem; color:#333; font-weight:600; line-height:1.3;">
+                                🏆 <strong>${displayName}</strong> ${data.action}
+                            </p>
+                            <span style="font-size:0.72rem; color:#999;">${timeLabel}</span>
+                        </div>
+                    </div>`;
+            }).join('');
+        };
+
+        // Fetch last 50 docs so client-side level-up filter has enough material
+        db.collection('social_feed')
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+            .onSnapshot(snapshot => {
+                const docs = [];
+                snapshot.forEach(doc => docs.push(doc));
+                _renderSocialFeed(docs);
+            }, err => {
+                console.warn('Erro ao carregar Mural de Conquistas:', err);
+            });
+    }
+
+    // Add keyframe for feed items if not already present
+    if (!document.getElementById('feed-keyframes')) {
+        const style = document.createElement('style');
+        style.id = 'feed-keyframes';
+        style.textContent = `
+            @keyframes feedSlideIn {
+                from { opacity: 0; transform: translateX(-10px); }
+                to   { opacity: 1; transform: translateX(0); }
+            }`;
+        document.head.appendChild(style);
+    }
+
     const openPraiseModal = (missionId, missionName, missionPoints, lastKey, dateKey) => {
         const modal = document.getElementById('praise-modal');
         if (!modal) return;
