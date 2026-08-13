@@ -141,7 +141,12 @@ document.addEventListener('DOMContentLoaded', () => {
         db.collection("users").onSnapshot((snapshot) => {
             const usersArray = [];
             snapshot.forEach((doc) => {
-                usersArray.push(doc.data());
+                // BUG FIX: Use document ID as fallback for the 'email' field.
+                // If a user document was saved without the 'email' field inside it,
+                // the find() below would fail to locate them, breaking point sync.
+                const data = doc.data();
+                if (!data.email) data.email = doc.id;
+                usersArray.push(data);
             });
             
             // Strip large base64 photos to prevent localStorage quota issues from legacy data
@@ -2130,6 +2135,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Update UI with User Data
+    // ── Level-up announcement dedup guard ────────────────────────────────────
+    // Tracks which rank has already been announced to the social wall in this
+    // browser session. Because updateUIWithUser() is called from many places
+    // (Firebase onSnapshot, prize redemption, page init, etc.) it can be
+    // invoked several times in rapid succession after a level-up event.
+    // Without this guard, the race condition between two onSnapshot deliveries
+    // (the optimistic "local" write + the server confirmation) would make
+    // logSocialActivity fire twice, creating a duplicate mural entry.
+    let _levelUpAnnouncedFor = storedUser.rank || null;
+
     const updateUIWithUser = () => {
         // Find Current Rank based on SPENT points (utilização)
         const spentPts = getUserSpentPoints();
@@ -2160,8 +2175,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const prevIndex = ranks.findIndex(r => r.name === previousRank);
             const currIndex = ranks.findIndex(r => r.name === currentRankObj.name);
             if (currIndex > prevIndex) {
-                // User levelled up → announce on the social wall
-                logSocialActivity(`atingiu o nível ${currentRankObj.name}! 🚀`, currentRankObj.icon);
+                // DEDUP GUARD: only announce if we haven't already announced this
+                // exact rank level in this browser session. This prevents duplicate
+                // mural posts when multiple onSnapshot events fire back-to-back.
+                if (_levelUpAnnouncedFor !== currentRankObj.name) {
+                    _levelUpAnnouncedFor = currentRankObj.name;
+                    logSocialActivity(`atingiu o nível ${currentRankObj.name}! 🚀`, currentRankObj.icon);
+                }
             }
         }
 
@@ -3309,6 +3329,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Admin Tool: Fix missing 'email' field inside Firestore user documents.
+    // Root cause: documents saved without the 'email' field can't be matched by
+    // the onSnapshot find(u => u.email === storedUser.email), breaking point sync.
+    window.fixMissingEmailFields = async () => {
+        if (!dbAvailable) { alert('Firebase não disponível.'); return; }
+        const confirmed = confirm('Esta ferramenta vai varrer todos os usuários no Firebase e adicionar o campo "email" nos documentos onde ele está faltando.\n\nIsso corrige a dessincronização de pontos causada por esse campo ausente.\n\nDeseja continuar?');
+        if (!confirmed) return;
+
+        try {
+            const snapshot = await db.collection('users').get();
+            const batch = db.batch();
+            let fixedCount = 0;
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (!data.email) {
+                    // The document ID is the user's email — write it back into the document
+                    batch.update(doc.ref, { email: doc.id });
+                    fixedCount++;
+                    console.log(`🔧 Corrigindo campo email ausente para: ${doc.id}`);
+                }
+            });
+
+            if (fixedCount === 0) {
+                alert('✅ Nenhum documento com campo email ausente foi encontrado. Tudo está correto!');
+                return;
+            }
+
+            await batch.commit();
+            alert(`✅ Correção concluída!\n${fixedCount} documento(s) tiveram o campo "email" adicionado.\n\nRecarregue a página para ver as atualizações.`);
+        } catch (err) {
+            console.error('Erro ao corrigir campos email:', err);
+            alert('Erro ao corrigir campos email. Veja o console para detalhes.');
+        }
+    };
+
     // Admin Tool: Reconcile points for all users based on their history
     window.reconcileAllUsersPoints = async () => {
         if (!dbAvailable) { alert('Firebase não disponível.'); return; }
@@ -3608,6 +3664,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Firestore has a 1MB document limit. Base64 photos can be 1-5MB each.
                 // Without this, all writes fail silently after 1-2 photo uploads.
                 const cleanUser = JSON.parse(JSON.stringify(storedUser));
+                // SYNC FIX: Always ensure the 'email' field is present in the Firestore document.
+                // Without it, the onSnapshot find(u => u.email === storedUser.email) will never
+                // match this user, breaking real-time point synchronization entirely.
+                cleanUser.email = storedUser.email;
                 if (cleanUser.history && Array.isArray(cleanUser.history)) {
                     cleanUser.history = cleanUser.history.map(tx => {
                         const cleanTx = { ...tx };
@@ -4172,12 +4232,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 return (data.action || '').includes('atingiu o nível');
             });
 
-            if (levelUpDocs.length === 0) {
+            // DEDUP: remove visually duplicate entries where the same user has the
+            // same action within a 10-minute window. This handles race-condition
+            // duplicates already persisted in Firestore from past sessions.
+            const DEDUP_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+            const dedupedDocs = levelUpDocs.filter((doc, idx) => {
+                const data = doc.data ? doc.data() : doc;
+                const ts = data.timestamp;
+                const t = ts ? (ts.toDate ? ts.toDate().getTime() : new Date(ts).getTime()) : 0;
+                // Check if an earlier entry (lower idx = more recent due to desc sort) with
+                // the same user+action exists within the dedup window.
+                for (let i = 0; i < idx; i++) {
+                    const prevData = levelUpDocs[i].data ? levelUpDocs[i].data() : levelUpDocs[i];
+                    const prevTs = prevData.timestamp;
+                    const pt = prevTs ? (prevTs.toDate ? prevTs.toDate().getTime() : new Date(prevTs).getTime()) : 0;
+                    if (prevData.user === data.user &&
+                        prevData.action === data.action &&
+                        Math.abs(pt - t) < DEDUP_WINDOW_MS) {
+                        return false; // suppress this duplicate
+                    }
+                }
+                return true;
+            });
+
+            if (dedupedDocs.length === 0) {
                 feedList.innerHTML = '<p style="padding:1rem; color:#999; text-align:center; font-size:0.85rem;">Nenhuma subida de nível ainda. Seja o primeiro! 🚀</p>';
                 return;
             }
 
-            feedList.innerHTML = levelUpDocs.map(doc => {
+            feedList.innerHTML = dedupedDocs.map(doc => {
                 const data = doc.data ? doc.data() : doc;
                 const ts = data.timestamp;
                 let timeLabel = '';
