@@ -3760,9 +3760,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const logSocialActivity = (action, icon) => {
+    const logSocialActivity = async (action, icon) => {
         if (!dbAvailable) return;
         try {
+            // ── Dedup guard (server-side) ─────────────────────────────────────────
+            // Before writing, check if this exact user+action already has an entry
+            // in the last 24 hours. This prevents duplicate mural posts when the
+            // user logs in from multiple devices/tabs or reloads the page before
+            // the rank is flushed to localStorage.
+            const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+            const cutoffTime = new Date(Date.now() - DEDUP_WINDOW_MS);
+
+            const existing = await db.collection('social_feed')
+                .where('user', '==', storedUser.username)
+                .where('action', '==', action)
+                .where('timestamp', '>=', cutoffTime)
+                .limit(1)
+                .get();
+
+            if (!existing.empty) {
+                console.log(`[SocialFeed] Entrada duplicada bloqueada para "${storedUser.username}" → "${action}"`);
+                return; // already recorded within the last 24h, skip
+            }
+
             db.collection('social_feed').add({
                 user: storedUser.username,
                 action: action,
@@ -4233,9 +4253,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // DEDUP: remove visually duplicate entries where the same user has the
-            // same action within a 10-minute window. This handles race-condition
-            // duplicates already persisted in Firestore from past sessions.
-            const DEDUP_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+            // same action within a 24-hour window. This handles duplicates already
+            // persisted in Firestore from past sessions (multiple logins, race conditions, etc.).
+            const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
             const dedupedDocs = levelUpDocs.filter((doc, idx) => {
                 const data = doc.data ? doc.data() : doc;
                 const ts = data.timestamp;
