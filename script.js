@@ -497,6 +497,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (iconName === 'svg-voucher') return 'svg-voucher'; // special SVG icon
         if (iconName === 'svg-ticket-premio') return 'svg-ticket-premio'; // special SVG icon
         if (iconName === 'svg-lampada') return 'svg-lampada'; // special SVG icon
+        if (iconName === 'svg-lampada-badge') return 'svg-lampada-badge'; // special SVG icon
+        if (iconName === 'svg-lampada-flat') return 'svg-lampada-flat'; // special SVG icon
+        if (iconName === 'svg-lampada-check') return 'svg-lampada-check'; // special SVG icon
         if (iconName.startsWith('fa-')) {
             // Check if it already has a style prefix (solid, brands, regular)
             if (iconName.startsWith('fa-solid ') || iconName.startsWith('fa-brands ') || iconName.startsWith('fa-regular ') || iconName.startsWith('fa-light ') || iconName.startsWith('fa-thin ')) {
@@ -1076,6 +1079,61 @@ document.addEventListener('DOMContentLoaded', () => {
                     <line x1="29" y1="12" x2="32" y2="16" stroke="${c}" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
                     <line x1="22" y1="34" x2="27" y2="36" stroke="${c}" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
                 </g>
+            </svg>`;
+        }
+        if (iconName === 'svg-lampada-badge') {
+            const c = color || '#F5A623';
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 4px 10px rgba(0,0,0,0.4));">
+                <circle cx="50" cy="50" r="48" fill="${c}"/>
+                <g stroke="white" stroke-linecap="round" stroke-width="3.5">
+                    <line x1="50" y1="3" x2="50" y2="13"/>
+                    <line x1="76" y1="11" x2="70" y2="18"/>
+                    <line x1="24" y1="11" x2="30" y2="18"/>
+                    <line x1="94" y1="46" x2="84" y2="46"/>
+                    <line x1="6"  y1="46" x2="16" y2="46"/>
+                </g>
+                <path d="M 50 22 C 63 22 73 31 73 45 C 73 55 67 61 62 66 L 38 66 C 33 61 27 55 27 45 C 27 31 37 22 50 22 Z" fill="white" stroke="none"/>
+                <line x1="38" y1="60" x2="62" y2="60" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>
+                <rect x="38" y="66" width="24" height="4.5" rx="1.5" fill="#DEDEDE" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+                <rect x="38" y="71.5" width="24" height="4.5" rx="1.5" fill="#C8C8C8" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+                <rect x="40" y="77" width="20" height="5" rx="2.5" fill="#ADADAD" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+            </svg>`;
+        }
+        if (iconName === 'svg-lampada-flat') {
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.3));">
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-width="5">
+                    <line x1="50" y1="4"  x2="50" y2="14"/>
+                    <line x1="77" y1="11" x2="70" y2="19"/>
+                    <line x1="23" y1="11" x2="30" y2="19"/>
+                    <line x1="92" y1="44" x2="82" y2="47"/>
+                    <line x1="8"  y1="44" x2="18" y2="47"/>
+                    <line x1="77" y1="77" x2="70" y2="70"/>
+                    <line x1="23" y1="77" x2="30" y2="70"/>
+                </g>
+                <path d="M 50 17 C 70 17 81 31 81 47 C 81 59 73 67 66 72 L 34 72 C 27 67 19 59 19 47 C 19 31 30 17 50 17 Z" fill="#FFD700" stroke="#1A1A1A" stroke-width="5" stroke-linejoin="round"/>
+                <line x1="34" y1="66" x2="66" y2="66" stroke="#1A1A1A" stroke-width="4"/>
+                <rect x="32" y="72" width="36" height="5.5" rx="1.5" fill="#D4D4D4" stroke="#1A1A1A" stroke-width="4"/>
+                <rect x="32" y="78.5" width="36" height="5.5" rx="1.5" fill="#B8B8B8" stroke="#1A1A1A" stroke-width="4"/>
+                <rect x="35" y="85" width="30" height="5.5" rx="2.5" fill="#9C9C9C" stroke="#1A1A1A" stroke-width="4"/>
+            </svg>`;
+        }
+        if (iconName === 'svg-lampada-check') {
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.3));">
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-width="5">
+                    <line x1="50" y1="4"  x2="50" y2="14"/>
+                    <line x1="77" y1="11" x2="70" y2="19"/>
+                    <line x1="23" y1="11" x2="30" y2="19"/>
+                    <line x1="92" y1="44" x2="82" y2="47"/>
+                    <line x1="8"  y1="44" x2="18" y2="47"/>
+                    <line x1="77" y1="77" x2="70" y2="70"/>
+                    <line x1="23" y1="77" x2="30" y2="70"/>
+                </g>
+                <path d="M 50 17 C 70 17 81 31 81 47 C 81 59 73 67 66 72 L 34 72 C 27 67 19 59 19 47 C 19 31 30 17 50 17 Z" fill="#FFD700" stroke="#1A1A1A" stroke-width="5" stroke-linejoin="round"/>
+                <path d="M 33 47 L 45 60 L 67 36" fill="none" stroke="#1A1A1A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="34" y1="66" x2="66" y2="66" stroke="#1A1A1A" stroke-width="4"/>
+                <rect x="32" y="72" width="36" height="5.5" rx="1.5" fill="#4DD0E1" stroke="#1A1A1A" stroke-width="4"/>
+                <rect x="32" y="78.5" width="36" height="5.5" rx="1.5" fill="#26C6DA" stroke="#1A1A1A" stroke-width="4"/>
+                <rect x="35" y="85" width="30" height="5.5" rx="2.5" fill="#00ACC1" stroke="#1A1A1A" stroke-width="4"/>
             </svg>`;
         }
         const cls = getIconClass(iconName || 'fa-gift');
