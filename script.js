@@ -496,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (iconName === 'svg-ticket') return 'svg-ticket'; // special SVG icon
         if (iconName === 'svg-voucher') return 'svg-voucher'; // special SVG icon
         if (iconName === 'svg-ticket-premio') return 'svg-ticket-premio'; // special SVG icon
+        if (iconName === 'svg-lampada') return 'svg-lampada'; // special SVG icon
         if (iconName.startsWith('fa-')) {
             // Check if it already has a style prefix (solid, brands, regular)
             if (iconName.startsWith('fa-solid ') || iconName.startsWith('fa-brands ') || iconName.startsWith('fa-regular ') || iconName.startsWith('fa-light ') || iconName.startsWith('fa-thin ')) {
@@ -1016,6 +1017,64 @@ document.addEventListener('DOMContentLoaded', () => {
                     <rect x="36" y="71" width="40" height="3.5" rx="1.8" fill="rgba(0,0,0,0.12)" stroke="none"/>
                     <path d="M 10 26 Q 42 21 72 27" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" stroke-linecap="round"/>
                     <path d="M 10 31 Q 30 27 48 32" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.5" stroke-linecap="round"/>
+                </g>
+            </svg>`;
+        }
+        if (iconName === 'svg-lampada') {
+            const c = color || '#F5A623';
+            // Glow color derived from the fill color for a realistic light effect
+            const glow = c;
+            return `<svg viewBox="0 0 100 100" width="1em" height="1em" style="font-size:inherit; filter: drop-shadow(0px 4px 10px rgba(0,0,0,0.35));">
+                <defs>
+                    <radialGradient id="bulbGlow_${c.replace('#','')}" cx="50%" cy="45%" r="50%">
+                        <stop offset="0%" stop-color="#FFFDE7" stop-opacity="1"/>
+                        <stop offset="60%" stop-color="${c}" stop-opacity="0.9"/>
+                        <stop offset="100%" stop-color="${c}" stop-opacity="0.4"/>
+                    </radialGradient>
+                    <radialGradient id="bulbShine_${c.replace('#','')}" cx="35%" cy="30%" r="45%">
+                        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.75"/>
+                        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+                    </radialGradient>
+                </defs>
+                <g stroke="#1A1A1A" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Sombra / glow atrás do bulbo -->
+                    <ellipse cx="50" cy="50" rx="26" ry="26" fill="${glow}" opacity="0.18" stroke="none"/>
+
+                    <!-- Corpo da lâmpada (bulbo) -->
+                    <path d="M 35 52 C 28 42 28 26 38 18 C 44 13 56 13 62 18 C 72 26 72 42 65 52 C 62 57 60 60 60 64 L 40 64 C 40 60 38 57 35 52 Z"
+                          fill="url(#bulbGlow_${c.replace('#','')})" stroke-width="3"/>
+
+                    <!-- Brilho interno (reflexo) -->
+                    <path d="M 35 52 C 28 42 28 26 38 18 C 44 13 56 13 62 18 C 72 26 72 42 65 52 C 62 57 60 60 60 64 L 40 64 C 40 60 38 57 35 52 Z"
+                          fill="url(#bulbShine_${c.replace('#','')})" stroke="none"/>
+
+                    <!-- Filamento (detalhe interno) -->
+                    <path d="M 44 54 L 44 46 L 50 42 L 56 46 L 56 54" fill="none" stroke="rgba(255,200,50,0.85)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+                    <!-- Anel divisor 1 (base do bulbo) -->
+                    <rect x="37" y="64" width="26" height="5" rx="2.5" fill="#9E9E9E" stroke-width="2"/>
+
+                    <!-- Anel divisor 2 -->
+                    <rect x="38" y="71" width="24" height="5" rx="2.5" fill="#757575" stroke-width="2"/>
+
+                    <!-- Rosca da lâmpada (base metálica) -->
+                    <path d="M 40 76 L 40 86 C 40 88 42 90 50 90 C 58 90 60 88 60 86 L 60 76 Z"
+                          fill="#BDBDBD" stroke-width="2.5"/>
+                    <!-- Linhas de rosca -->
+                    <line x1="40" y1="79" x2="60" y2="79" stroke="#9E9E9E" stroke-width="1.5"/>
+                    <line x1="40" y1="82.5" x2="60" y2="82.5" stroke="#9E9E9E" stroke-width="1.5"/>
+                    <line x1="40" y1="86" x2="60" y2="86" stroke="#9E9E9E" stroke-width="1"/>
+
+                    <!-- Brilho lateral esquerdo no bulbo -->
+                    <path d="M 36 35 Q 37 27 44 23" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M 34 44 Q 34 39 37 36" fill="none" stroke="rgba(255,255,255,0.40)" stroke-width="2" stroke-linecap="round"/>
+
+                    <!-- Raios de luz irradiando (pontilhados) -->
+                    <line x1="50" y1="6" x2="50" y2="11" stroke="${c}" stroke-width="2.5" stroke-linecap="round" opacity="0.75"/>
+                    <line x1="71" y1="12" x2="68" y2="16" stroke="${c}" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
+                    <line x1="78" y1="34" x2="73" y2="36" stroke="${c}" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
+                    <line x1="29" y1="12" x2="32" y2="16" stroke="${c}" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
+                    <line x1="22" y1="34" x2="27" y2="36" stroke="${c}" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
                 </g>
             </svg>`;
         }
