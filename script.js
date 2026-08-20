@@ -3888,14 +3888,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
             const cutoffTime = new Date(Date.now() - DEDUP_WINDOW_MS);
 
-            const existing = await db.collection('social_feed')
+            const existingSnapshot = await db.collection('social_feed')
                 .where('user', '==', storedUser.username)
-                .where('action', '==', action)
-                .where('timestamp', '>=', cutoffTime)
-                .limit(1)
                 .get();
 
-            if (!existing.empty) {
+            let isDuplicate = false;
+            existingSnapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.action === action) {
+                    const ts = data.timestamp ? (data.timestamp.toDate ? data.timestamp.toDate().getTime() : new Date(data.timestamp).getTime()) : 0;
+                    if (ts >= cutoffTime.getTime()) {
+                        isDuplicate = true;
+                    }
+                }
+            });
+
+            if (isDuplicate) {
                 console.log(`[SocialFeed] Entrada duplicada bloqueada para "${storedUser.username}" → "${action}"`);
                 return; // already recorded within the last 24h, skip
             }
