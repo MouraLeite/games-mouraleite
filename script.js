@@ -1799,13 +1799,13 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             const dt = prize.discountType || '';
             const discountBadge = dt && discountConfig[dt]
-                ? `<div class="quest-discount-badge quest-discount-badge--${dt}" style="top: -10px; left: -10px;"><span class="discount-emoji">${discountConfig[dt].emoji}</span><span>${discountConfig[dt].label}</span></div>`
+                ? `<div class="prize-discount-badge quest-discount-badge--${dt}"><span class="discount-emoji">${discountConfig[dt].emoji}</span><span>${discountConfig[dt].label}</span></div>`
                 : '';
 
             const isBase64 = prize.image && prize.image.startsWith('data:image');
             const imgHTML = isBase64 
-                ? `<div class="item-img" style="position: relative;">${discountBadge}<img src="${prize.image}" style="max-width: 90%; max-height: 120px; object-fit: contain; border-radius: 8px;"></div>`
-                : `<div class="item-img" style="position: relative;">${discountBadge}${getIconHTML(prize.icon || 'fa-gift', prize.color || '#006837')}</div>`;
+                ? `<div class="item-img"><img src="${prize.image}" style="max-width: 90%; max-height: 120px; object-fit: contain; border-radius: 8px;"></div>`
+                : `<div class="item-img">${getIconHTML(prize.icon || 'fa-gift', prize.color || '#006837')}</div>`;
             
             // Stock logic: -1 = unlimited, 0 = sold out, >0 = available
             const qty = (prize.quantity === undefined || prize.quantity === null) ? -1 : parseInt(prize.quantity);
@@ -1849,6 +1849,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const html = `
                 <div class="store-card custom-prize-card${isSoldOut ? ' store-card--esgotado' : ''}">
                     ${stockBadgeHTML}
+                    ${discountBadge}
                     ${imgHTML}
                     <h3>${prize.name}</h3>
                     ${prize.desc ? `<p class="store-card-desc">${prize.desc}</p>` : ''}

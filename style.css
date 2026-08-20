@@ -966,13 +966,31 @@ body {
     z-index: 2;
 }
 
-.quest-discount-badge .discount-emoji {
+.prize-discount-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: white;
+    padding: 4px 10px 4px 6px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 2;
+    margin-bottom: 0.6rem;
+}
+
+.quest-discount-badge .discount-emoji,
+.prize-discount-badge .discount-emoji {
     display: inline-block;
     font-size: 16px;
     line-height: 1;
 }
 
-.quest-discount-badge span:not(.discount-emoji) {
+.quest-discount-badge span:not(.discount-emoji),
+.prize-discount-badge span:not(.discount-emoji) {
     line-height: 1;
 }
 
