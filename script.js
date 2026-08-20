@@ -2262,6 +2262,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // logSocialActivity fire twice, creating a duplicate mural entry.
     let _levelUpAnnouncedFor = storedUser.rank || null;
 
+    // ── Backfill guard: tracks which ranks have already been checked/backfilled
+    // in this browser session to avoid repeated Firestore queries.
+    const _backfillCheckedRanks = new Set();
+
     const updateUIWithUser = () => {
         // Find Current Rank based on SPENT points (utilização)
         const spentPts = getUserSpentPoints();
@@ -2297,9 +2301,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 // mural posts when multiple onSnapshot events fire back-to-back.
                 if (_levelUpAnnouncedFor !== currentRankObj.name) {
                     _levelUpAnnouncedFor = currentRankObj.name;
+                    _backfillCheckedRanks.add(currentRankObj.name); // mark as handled
                     logSocialActivity(`atingiu o nível ${currentRankObj.name}! 🚀`, currentRankObj.icon);
                 }
             }
+        }
+
+        // ── Backfill: ensure the social_feed entry exists for the current rank ──
+        // This catches cases where the user leveled up in a previous session but
+        // the social_feed write failed silently (e.g., due to the old composite
+        // index bug). Without this, those users would NEVER appear on the mural
+        // because previousRank already equals currentRankObj.name on subsequent loads.
+        if (dbAvailable && currentRankObj.name !== 'Iniciante' && !_backfillCheckedRanks.has(currentRankObj.name)) {
+            _backfillCheckedRanks.add(currentRankObj.name);
+            const expectedAction = `atingiu o nível ${currentRankObj.name}! 🚀`;
+            // Fire-and-forget async check
+            (async () => {
+                try {
+                    const snap = await db.collection('social_feed')
+                        .where('user', '==', storedUser.username)
+                        .get();
+                    const alreadyExists = snap.docs.some(d => d.data().action === expectedAction);
+                    if (!alreadyExists) {
+                        console.log(`[Backfill] Criando entrada no mural para "${storedUser.username}" → "${expectedAction}"`);
+                        _levelUpAnnouncedFor = currentRankObj.name;
+                        await db.collection('social_feed').add({
+                            user: storedUser.username,
+                            action: expectedAction,
+                            icon: currentRankObj.icon || 'fa-star',
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                } catch (backfillErr) {
+                    console.warn('[Backfill] Erro ao verificar/criar entrada no mural:', backfillErr);
+                }
+            })();
         }
 
         // Update Sidebar
