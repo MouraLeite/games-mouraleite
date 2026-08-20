@@ -1295,21 +1295,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const badgeLabel = mission.frequency === 'daily' ? 'Diário' : mission.frequency === 'weekly' ? 'Semanal' : mission.frequency === 'monthly' ? 'Mensal' : 'Única';
                 const showFrequencyBadge = !mission.surprise;
                 const surpriseBadge = mission.surprise ? `<div class="quest-surprise-badge"><span class="fire-emoji">🔥</span><span>Surpresa</span></div>` : '';
-                
-                // Discount badge logic
-                const discountConfig = {
-                    oferta:     { emoji: '🏷️', label: 'Oferta' },
-                    desconto:   { emoji: '💰', label: 'Desconto' },
-                    imperdivel: { emoji: '⚡', label: 'Oferta Imperdível' },
-                    limitada:   { emoji: '🔥', label: 'Oferta Limitada' },
-                    promocao:   { emoji: '✨', label: 'Promoção' },
-                    especial:   { emoji: '💎', label: 'Preço Especial' }
-                };
-                const dt = mission.discountType || '';
-                const discountBadge = dt && discountConfig[dt]
-                    ? `<div class="quest-discount-badge quest-discount-badge--${dt}"><span class="discount-emoji">${discountConfig[dt].emoji}</span><span>${discountConfig[dt].label}</span></div>`
-                    : '';
-
                 const pointValue = Math.floor((mission.points || 0) * multiplier);
                 const iconClass = getIconClass(mission.icon);
                 const iconColor = mission.color || '#1976d2';
@@ -1360,7 +1345,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `
                     <div class="quest-card custom-quest-card">
                         ${hotBadge}
-                        ${discountBadge}
                         ${surpriseBadge}
                         ${showFrequencyBadge ? `<div class="quest-badge ${mission.frequency}">${badgeLabel}</div>` : ''}
                         <div class="quest-main-icon" style="color: ${iconColor}; display: flex; justify-content: center; align-items: center;">${getIconHTML(mission.icon, iconColor)}</div>
@@ -1456,10 +1440,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const freqLabel = mission.frequency === 'daily' ? 'Diária' : mission.frequency === 'weekly' ? 'Semanal' : mission.frequency === 'monthly' ? 'Mensal' : 'Única';
             const statusLabel = mission.active ? 'Ativa' : 'Inativa';
             const surpriseFlag = mission.surprise ? ' <span style="color:#e53935; font-size:0.8rem;">(Surpresa)</span>' : '';
-            const discountFlag = mission.discountType ? ' <span style="color:#00C853; font-size:0.8rem;">(Desconto)</span>' : '';
             return `
                 <tr>
-                    <td><strong>${mission.name}</strong>${surpriseFlag}${discountFlag}</td>
+                    <td><strong>${mission.name}</strong>${surpriseFlag}</td>
                     <td>${freqLabel}</td>
                     <td>${mission.points} ML Coins</td>
                     <td><span class="status-badge ${mission.active ? 'status-unlocked' : 'status-locked'}">${statusLabel}</span></td>
@@ -1491,7 +1474,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const validationType = document.getElementById('mission-validation-type').value;
         const active = document.getElementById('mission-active').checked;
         const surprise = document.getElementById('mission-surprise').checked;
-        const discountType = document.getElementById('mission-discount-type').value || '';
         const rawDuration = parseInt(document.getElementById('mission-duration').value, 10);
         const durationHours = isNaN(rawDuration) ? 0 : rawDuration;
         const expiresAt = surprise && durationHours > 0 ? new Date(Date.now() + durationHours * 3600000).toISOString() : null;
@@ -1529,7 +1511,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         validationType,
                         active,
                         surprise,
-                        discountType,
                         durationHours: surprise ? safeDuration : null,
                         expiresAt: newExpiresAt,
                         updatedAt: new Date().toISOString()
@@ -1575,7 +1556,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     validationType,
                     active,
                     surprise,
-                    discountType,
                     durationHours: surprise ? durationHours : null,
                     expiresAt,
                     createdAt: new Date().toISOString()
@@ -1644,7 +1624,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('mission-validation-type').value = mission.validationType || '';
         document.getElementById('mission-active').checked = mission.active !== false;
         document.getElementById('mission-surprise').checked = mission.surprise || false;
-        document.getElementById('mission-discount-type').value = mission.discountType || '';
         document.getElementById('mission-duration').value = mission.durationHours || '';
 
         // Trigger preview update
@@ -1853,9 +1832,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const isButtonDisabled = isSoldOut || isOnCooldown;
             const buttonText = isOnCooldown ? 'No Prazo' : (isSoldOut ? 'Esgotado' : 'Trocar');
 
+            // Discount badge logic
+            const discountConfig = {
+                oferta:     { emoji: '🏷️', label: 'Oferta' },
+                desconto:   { emoji: '💰', label: 'Desconto' },
+                imperdivel: { emoji: '⚡', label: 'Oferta Imperdível' },
+                limitada:   { emoji: '🔥', label: 'Oferta Limitada' },
+                promocao:   { emoji: '✨', label: 'Promoção' },
+                especial:   { emoji: '💎', label: 'Preço Especial' }
+            };
+            const dt = prize.discountType || '';
+            const discountBadge = dt && discountConfig[dt]
+                ? `<div class="quest-discount-badge quest-discount-badge--${dt}"><span class="discount-emoji">${discountConfig[dt].emoji}</span><span>${discountConfig[dt].label}</span></div>`
+                : '';
+
             const html = `
                 <div class="store-card custom-prize-card${isSoldOut ? ' store-card--esgotado' : ''}">
                     ${stockBadgeHTML}
+                    ${discountBadge}
                     ${imgHTML}
                     <h3>${prize.name}</h3>
                     ${prize.desc ? `<p class="store-card-desc">${prize.desc}</p>` : ''}
@@ -1901,10 +1895,11 @@ document.addEventListener('DOMContentLoaded', () => {
         body.innerHTML = prizes.map(prize => {
             const qty = (prize.quantity === undefined || prize.quantity === null) ? -1 : parseInt(prize.quantity);
             const stockLabel = qty === -1 ? '<span style="color:#999;">Ilimitado</span>' : qty === 0 ? '<span style="color:#f44336; font-weight:700;">Esgotado</span>' : `<span style="color:${qty <= 5 ? '#e67e22' : '#4caf50'}; font-weight:700;">${qty} un.</span>`;
+            const discountFlag = prize.discountType ? ' <span style="color:#00C853; font-size:0.8rem;">(Desconto)</span>' : '';
             return `
             <tr>
                 <td><strong>${prize.order || 0}</strong></td>
-                <td><strong>${prize.name}</strong></td>
+                <td><strong>${prize.name}</strong>${discountFlag}</td>
                 <td>${prize.points} ML Coins</td>
                 <td>${stockLabel}</td>
                 <td><span class="status-badge ${prize.active ? 'status-unlocked' : 'status-locked'}">${prize.active ? 'Ativo' : 'Inativo'}</span></td>
@@ -1935,6 +1930,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const quantity = isNaN(quantityRaw) ? -1 : quantityRaw;
         const cooldownRaw = document.getElementById('prize-cooldown') ? parseInt(document.getElementById('prize-cooldown').value) : 0;
         const cooldownDays = isNaN(cooldownRaw) ? 0 : cooldownRaw;
+        const discountType = document.getElementById('prize-discount-type') ? document.getElementById('prize-discount-type').value : '';
         const imageB64 = form.dataset.imageB64 || null;
 
         try {
@@ -1950,6 +1946,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 order,
                 quantity,
                 cooldownDays,
+                discountType,
                 updatedAt: new Date().toISOString()
             };
             if (imageB64) prizeObj.image = imageB64;
@@ -2062,6 +2059,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('prize-color').value = prize.color || '#006837';
         document.getElementById('prize-active').checked = prize.active !== false;
         document.getElementById('prize-order').value = prize.order || 0;
+        if (document.getElementById('prize-discount-type')) document.getElementById('prize-discount-type').value = prize.discountType || '';
         if (document.getElementById('prize-quantity')) {
             const qty = (prize.quantity === undefined || prize.quantity === null) ? -1 : prize.quantity;
             document.getElementById('prize-quantity').value = qty;
