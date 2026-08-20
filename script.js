@@ -4413,26 +4413,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return (data.action || '').includes('atingiu o nível');
             });
 
-            // DEDUP: remove visually duplicate entries where the same user has the
-            // same action within a 24-hour window. This handles duplicates already
-            // persisted in Firestore from past sessions (multiple logins, race conditions, etc.).
-            const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+            // DEDUP: keep only the most recent entry per user+action combination.
+            // This prevents visual duplicates from old bugs or race conditions.
+            const seen = new Map(); // key: "user|action" → index of first occurrence
             const dedupedDocs = levelUpDocs.filter((doc, idx) => {
                 const data = doc.data ? doc.data() : doc;
-                const ts = data.timestamp;
-                const t = ts ? (ts.toDate ? ts.toDate().getTime() : new Date(ts).getTime()) : 0;
-                // Check if an earlier entry (lower idx = more recent due to desc sort) with
-                // the same user+action exists within the dedup window.
-                for (let i = 0; i < idx; i++) {
-                    const prevData = levelUpDocs[i].data ? levelUpDocs[i].data() : levelUpDocs[i];
-                    const prevTs = prevData.timestamp;
-                    const pt = prevTs ? (prevTs.toDate ? prevTs.toDate().getTime() : new Date(prevTs).getTime()) : 0;
-                    if (prevData.user === data.user &&
-                        prevData.action === data.action &&
-                        Math.abs(pt - t) < DEDUP_WINDOW_MS) {
-                        return false; // suppress this duplicate
-                    }
-                }
+                const key = `${data.user}|${data.action}`;
+                if (seen.has(key)) return false; // already seen (earlier = more recent due to desc sort)
+                seen.set(key, idx);
                 return true;
             });
 
@@ -4489,7 +4477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fetch last 50 docs so client-side level-up filter has enough material
         db.collection('social_feed')
             .orderBy('timestamp', 'desc')
-            .limit(50)
+            .limit(200)
             .onSnapshot(snapshot => {
                 const docs = [];
                 snapshot.forEach(doc => docs.push(doc));
@@ -4497,6 +4485,76 @@ document.addEventListener('DOMContentLoaded', () => {
             }, err => {
                 console.warn('Erro ao carregar Mural de Conquistas:', err);
             });
+
+        // ── Global Backfill: ensure ALL users who leveled up have mural entries ──
+        // This runs once per page load. It reads ALL users from Firestore, calculates
+        // each user's rank from their spent points, and creates missing social_feed
+        // entries. This fixes the gap where level-ups were detected but the write to
+        // social_feed failed silently (due to the old composite index bug).
+        (async () => {
+            try {
+                // 1. Read ALL existing social_feed entries to know what already exists
+                const feedSnap = await db.collection('social_feed').get();
+                const existingEntries = new Set();
+                feedSnap.forEach(doc => {
+                    const data = doc.data();
+                    if ((data.action || '').includes('atingiu o nível')) {
+                        existingEntries.add(`${data.user}|${data.action}`);
+                    }
+                });
+
+                // 2. Read ALL users and calculate their ranks from spent points
+                const usersSnap = await db.collection('users').get();
+                const entriesToCreate = [];
+
+                usersSnap.forEach(doc => {
+                    const userData = doc.data();
+                    if (!userData.username || userData.disabled) return;
+                    if (userData.email === 'admin@mouraleite.com.br') return;
+
+                    // Calculate spent points from history (same logic as getUserSpentPoints)
+                    const history = userData.history || [];
+                    let spent = 0;
+                    history.forEach(tx => {
+                        if (tx.status === 'Recusado' || tx.status === 'Cancelado') return;
+                        const spentMatch = (tx.item || '').match(/\(-(\d+)\s*(?:pts|ML Coins|Moura Coins)\)/);
+                        if (spentMatch) {
+                            spent += parseInt(spentMatch[1]);
+                        }
+                    });
+
+                    // Determine rank
+                    const userRankObj = ranks.find(r => spent <= r.next) || ranks[ranks.length - 1];
+                    if (userRankObj.name === 'Iniciante') return; // no mural entry needed
+
+                    const action = `atingiu o nível ${userRankObj.name}! 🚀`;
+                    const key = `${userData.username}|${action}`;
+
+                    if (!existingEntries.has(key)) {
+                        entriesToCreate.push({
+                            user: userData.username,
+                            action: action,
+                            icon: userRankObj.icon || 'fa-star',
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        existingEntries.add(key); // prevent duplicates within same batch
+                    }
+                });
+
+                // 3. Create missing entries
+                if (entriesToCreate.length > 0) {
+                    console.log(`[Mural Backfill] Criando ${entriesToCreate.length} entrada(s) faltante(s)...`);
+                    for (const entry of entriesToCreate) {
+                        await db.collection('social_feed').add(entry);
+                        console.log(`[Mural Backfill] ✅ ${entry.user} → ${entry.action}`);
+                    }
+                } else {
+                    console.log('[Mural Backfill] Todas as entradas do mural estão atualizadas.');
+                }
+            } catch (backfillErr) {
+                console.warn('[Mural Backfill] Erro ao verificar entradas faltantes:', backfillErr);
+            }
+        })();
     }
 
     // Add keyframe for feed items if not already present
