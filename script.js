@@ -1788,10 +1788,24 @@ document.addEventListener('DOMContentLoaded', () => {
             .sort((a, b) => (parseInt(a.order) || 0) - (parseInt(b.order) || 0));
         
         prizes.forEach(prize => {
+            // Discount badge logic
+            const discountConfig = {
+                oferta:     { emoji: '🏷️', label: 'Oferta' },
+                desconto:   { emoji: '💰', label: 'Desconto' },
+                imperdivel: { emoji: '⚡', label: 'Oferta Imperdível' },
+                limitada:   { emoji: '🔥', label: 'Oferta Limitada' },
+                promocao:   { emoji: '✨', label: 'Promoção' },
+                especial:   { emoji: '💎', label: 'Preço Especial' }
+            };
+            const dt = prize.discountType || '';
+            const discountBadge = dt && discountConfig[dt]
+                ? `<div class="quest-discount-badge quest-discount-badge--${dt}" style="top: -10px; left: -10px;"><span class="discount-emoji">${discountConfig[dt].emoji}</span><span>${discountConfig[dt].label}</span></div>`
+                : '';
+
             const isBase64 = prize.image && prize.image.startsWith('data:image');
             const imgHTML = isBase64 
-                ? `<div class="item-img"><img src="${prize.image}" style="max-width: 90%; max-height: 120px; object-fit: contain; border-radius: 8px;"></div>`
-                : `<div class="item-img">${getIconHTML(prize.icon || 'fa-gift', prize.color || '#006837')}</div>`;
+                ? `<div class="item-img" style="position: relative;">${discountBadge}<img src="${prize.image}" style="max-width: 90%; max-height: 120px; object-fit: contain; border-radius: 8px;"></div>`
+                : `<div class="item-img" style="position: relative;">${discountBadge}${getIconHTML(prize.icon || 'fa-gift', prize.color || '#006837')}</div>`;
             
             // Stock logic: -1 = unlimited, 0 = sold out, >0 = available
             const qty = (prize.quantity === undefined || prize.quantity === null) ? -1 : parseInt(prize.quantity);
@@ -1832,24 +1846,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const isButtonDisabled = isSoldOut || isOnCooldown;
             const buttonText = isOnCooldown ? 'No Prazo' : (isSoldOut ? 'Esgotado' : 'Trocar');
 
-            // Discount badge logic
-            const discountConfig = {
-                oferta:     { emoji: '🏷️', label: 'Oferta' },
-                desconto:   { emoji: '💰', label: 'Desconto' },
-                imperdivel: { emoji: '⚡', label: 'Oferta Imperdível' },
-                limitada:   { emoji: '🔥', label: 'Oferta Limitada' },
-                promocao:   { emoji: '✨', label: 'Promoção' },
-                especial:   { emoji: '💎', label: 'Preço Especial' }
-            };
-            const dt = prize.discountType || '';
-            const discountBadge = dt && discountConfig[dt]
-                ? `<div class="quest-discount-badge quest-discount-badge--${dt}"><span class="discount-emoji">${discountConfig[dt].emoji}</span><span>${discountConfig[dt].label}</span></div>`
-                : '';
-
             const html = `
                 <div class="store-card custom-prize-card${isSoldOut ? ' store-card--esgotado' : ''}">
                     ${stockBadgeHTML}
-                    ${discountBadge}
                     ${imgHTML}
                     <h3>${prize.name}</h3>
                     ${prize.desc ? `<p class="store-card-desc">${prize.desc}</p>` : ''}
