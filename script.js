@@ -1295,6 +1295,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const badgeLabel = mission.frequency === 'daily' ? 'Diário' : mission.frequency === 'weekly' ? 'Semanal' : mission.frequency === 'monthly' ? 'Mensal' : 'Única';
                 const showFrequencyBadge = !mission.surprise;
                 const surpriseBadge = mission.surprise ? `<div class="quest-surprise-badge"><span class="fire-emoji">🔥</span><span>Surpresa</span></div>` : '';
+                
+                // Discount badge logic
+                const discountConfig = {
+                    oferta:     { emoji: '🏷️', label: 'Oferta' },
+                    desconto:   { emoji: '💰', label: 'Desconto' },
+                    imperdivel: { emoji: '⚡', label: 'Oferta Imperdível' },
+                    limitada:   { emoji: '🔥', label: 'Oferta Limitada' },
+                    promocao:   { emoji: '✨', label: 'Promoção' },
+                    especial:   { emoji: '💎', label: 'Preço Especial' }
+                };
+                const dt = mission.discountType || '';
+                const discountBadge = dt && discountConfig[dt]
+                    ? `<div class="quest-discount-badge quest-discount-badge--${dt}"><span class="discount-emoji">${discountConfig[dt].emoji}</span><span>${discountConfig[dt].label}</span></div>`
+                    : '';
+
                 const pointValue = Math.floor((mission.points || 0) * multiplier);
                 const iconClass = getIconClass(mission.icon);
                 const iconColor = mission.color || '#1976d2';
@@ -1345,6 +1360,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `
                     <div class="quest-card custom-quest-card">
                         ${hotBadge}
+                        ${discountBadge}
                         ${surpriseBadge}
                         ${showFrequencyBadge ? `<div class="quest-badge ${mission.frequency}">${badgeLabel}</div>` : ''}
                         <div class="quest-main-icon" style="color: ${iconColor}; display: flex; justify-content: center; align-items: center;">${getIconHTML(mission.icon, iconColor)}</div>
@@ -1439,9 +1455,11 @@ document.addEventListener('DOMContentLoaded', () => {
         body.innerHTML = missions.map(mission => {
             const freqLabel = mission.frequency === 'daily' ? 'Diária' : mission.frequency === 'weekly' ? 'Semanal' : mission.frequency === 'monthly' ? 'Mensal' : 'Única';
             const statusLabel = mission.active ? 'Ativa' : 'Inativa';
+            const surpriseFlag = mission.surprise ? ' <span style="color:#e53935; font-size:0.8rem;">(Surpresa)</span>' : '';
+            const discountFlag = mission.discountType ? ' <span style="color:#00C853; font-size:0.8rem;">(Desconto)</span>' : '';
             return `
                 <tr>
-                    <td><strong>${mission.name}</strong></td>
+                    <td><strong>${mission.name}</strong>${surpriseFlag}${discountFlag}</td>
                     <td>${freqLabel}</td>
                     <td>${mission.points} ML Coins</td>
                     <td><span class="status-badge ${mission.active ? 'status-unlocked' : 'status-locked'}">${statusLabel}</span></td>
@@ -1473,6 +1491,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const validationType = document.getElementById('mission-validation-type').value;
         const active = document.getElementById('mission-active').checked;
         const surprise = document.getElementById('mission-surprise').checked;
+        const discountType = document.getElementById('mission-discount-type').value || '';
         const rawDuration = parseInt(document.getElementById('mission-duration').value, 10);
         const durationHours = isNaN(rawDuration) ? 0 : rawDuration;
         const expiresAt = surprise && durationHours > 0 ? new Date(Date.now() + durationHours * 3600000).toISOString() : null;
@@ -1510,6 +1529,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         validationType,
                         active,
                         surprise,
+                        discountType,
                         durationHours: surprise ? safeDuration : null,
                         expiresAt: newExpiresAt,
                         updatedAt: new Date().toISOString()
@@ -1555,6 +1575,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     validationType,
                     active,
                     surprise,
+                    discountType,
                     durationHours: surprise ? durationHours : null,
                     expiresAt,
                     createdAt: new Date().toISOString()
@@ -1623,6 +1644,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('mission-validation-type').value = mission.validationType || '';
         document.getElementById('mission-active').checked = mission.active !== false;
         document.getElementById('mission-surprise').checked = mission.surprise || false;
+        document.getElementById('mission-discount-type').value = mission.discountType || '';
         document.getElementById('mission-duration').value = mission.durationHours || '';
 
         // Trigger preview update

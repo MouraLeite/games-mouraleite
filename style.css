@@ -948,6 +948,158 @@ body {
     50%       { box-shadow: 0 6px 22px rgba(255, 80, 0, 0.75);  transform: scale(1.04); }
 }
 
+/* ===== Discount Badge Base ===== */
+.quest-discount-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: white;
+    padding: 4px 10px 4px 6px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 2;
+}
+
+.quest-discount-badge .discount-emoji {
+    display: inline-block;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.quest-discount-badge span:not(.discount-emoji) {
+    line-height: 1;
+}
+
+/* --- 🏷️ Oferta (Green Emerald — Soft Pulse) --- */
+.quest-discount-badge--oferta {
+    background: linear-gradient(135deg, #00C853 0%, #00897B 100%);
+    box-shadow: 0 4px 14px rgba(0, 200, 83, 0.45);
+    animation: discountPulseSoft 2.5s ease-in-out infinite;
+}
+
+@keyframes discountPulseSoft {
+    0%, 100% { box-shadow: 0 4px 14px rgba(0, 200, 83, 0.45); transform: scale(1); }
+    50%       { box-shadow: 0 6px 20px rgba(0, 200, 83, 0.7);  transform: scale(1.03); }
+}
+
+/* --- 💰 Desconto (Gold Shimmer) --- */
+.quest-discount-badge--desconto {
+    background: linear-gradient(135deg, #FFD600 0%, #FF8F00 100%);
+    color: #4E2800;
+    box-shadow: 0 4px 14px rgba(255, 214, 0, 0.45);
+    animation: discountShimmer 3s linear infinite;
+    background-size: 200% 100%;
+}
+
+@keyframes discountShimmer {
+    0%   { background-position: 200% 0; box-shadow: 0 4px 14px rgba(255, 214, 0, 0.45); }
+    50%  { background-position: 0% 0;   box-shadow: 0 6px 22px rgba(255, 214, 0, 0.75); }
+    100% { background-position: 200% 0; box-shadow: 0 4px 14px rgba(255, 214, 0, 0.45); }
+}
+
+.quest-discount-badge--desconto .discount-emoji {
+    animation: coinBounce 1.5s ease-in-out infinite;
+}
+
+@keyframes coinBounce {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+}
+
+/* --- ⚡ Oferta Imperdível (Magenta/Purple — Intense Pulse) --- */
+.quest-discount-badge--imperdivel {
+    background: linear-gradient(135deg, #AA00FF 0%, #D500F9 100%);
+    box-shadow: 0 4px 14px rgba(170, 0, 255, 0.45);
+    animation: discountPulseIntense 1.8s ease-in-out infinite;
+}
+
+@keyframes discountPulseIntense {
+    0%, 100% { box-shadow: 0 4px 14px rgba(170, 0, 255, 0.45); transform: scale(1); }
+    25%      { transform: scale(1.06); }
+    50%      { box-shadow: 0 6px 24px rgba(213, 0, 249, 0.8);  transform: scale(1); }
+    75%      { transform: scale(1.04); }
+}
+
+.quest-discount-badge--imperdivel .discount-emoji {
+    animation: boltFlash 1.2s ease-in-out infinite;
+}
+
+@keyframes boltFlash {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.6; transform: scale(1.2); }
+}
+
+/* --- 🔥 Oferta Limitada (Red/Orange — Fire Flicker) --- */
+.quest-discount-badge--limitada {
+    background: linear-gradient(135deg, #FF3D00 0%, #DD2C00 100%);
+    box-shadow: 0 4px 14px rgba(255, 61, 0, 0.45);
+    animation: discountFirePulse 2s ease-in-out infinite;
+}
+
+@keyframes discountFirePulse {
+    0%, 100% { box-shadow: 0 4px 14px rgba(255, 61, 0, 0.45); transform: scale(1); }
+    50%       { box-shadow: 0 6px 22px rgba(255, 80, 0, 0.75);  transform: scale(1.04); }
+}
+
+.quest-discount-badge--limitada .discount-emoji {
+    animation: fireFlicker 0.7s ease-in-out infinite;
+    transform-origin: bottom center;
+}
+
+/* --- ✨ Promoção (Gold/Orange — Sparkle Rotate) --- */
+.quest-discount-badge--promocao {
+    background: linear-gradient(135deg, #FF6D00 0%, #FFAB00 100%);
+    color: #4E2800;
+    box-shadow: 0 4px 14px rgba(255, 109, 0, 0.45);
+    animation: discountPromoPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes discountPromoPulse {
+    0%, 100% { box-shadow: 0 4px 14px rgba(255, 109, 0, 0.45); transform: scale(1); }
+    50%       { box-shadow: 0 6px 20px rgba(255, 171, 0, 0.7);  transform: scale(1.03); }
+}
+
+.quest-discount-badge--promocao .discount-emoji {
+    animation: sparkleRotate 2s linear infinite;
+}
+
+@keyframes sparkleRotate {
+    0%   { transform: rotate(0deg)   scale(1); }
+    25%  { transform: rotate(15deg)  scale(1.15); }
+    50%  { transform: rotate(0deg)   scale(1); }
+    75%  { transform: rotate(-15deg) scale(1.15); }
+    100% { transform: rotate(0deg)   scale(1); }
+}
+
+/* --- 💎 Preço Especial (Blue/Cyan — Crystal Shine) --- */
+.quest-discount-badge--especial {
+    background: linear-gradient(135deg, #00B0FF 0%, #0091EA 100%);
+    box-shadow: 0 4px 14px rgba(0, 176, 255, 0.45);
+    animation: discountCrystal 3s ease-in-out infinite;
+}
+
+@keyframes discountCrystal {
+    0%, 100% { box-shadow: 0 4px 14px rgba(0, 176, 255, 0.45); transform: scale(1); filter: brightness(1); }
+    50%       { box-shadow: 0 6px 22px rgba(0, 145, 234, 0.7);  transform: scale(1.03); filter: brightness(1.1); }
+}
+
+.quest-discount-badge--especial .discount-emoji {
+    animation: crystalShine 2.5s ease-in-out infinite;
+}
+
+@keyframes crystalShine {
+    0%, 100% { transform: scale(1)    rotate(0deg);   filter: brightness(1); }
+    25%      { transform: scale(1.1)  rotate(-5deg);  filter: brightness(1.3); }
+    50%      { transform: scale(1)    rotate(0deg);   filter: brightness(1); }
+    75%      { transform: scale(1.1)  rotate(5deg);   filter: brightness(1.2); }
+}
+
 .quest-hot-badge {
     position: absolute;
     top: 18px;
